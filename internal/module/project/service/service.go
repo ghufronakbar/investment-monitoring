@@ -210,6 +210,7 @@ func (s *ProjectService) GetByID(ctx context.Context, params GetProjectParams) (
 		contractReturn.Vendor = &ParticipantReturn{
 			OrgID:   contract.VendorParticipantID.UUID,
 			OrgName: contract.VendorName.String,
+			OrgRole: string(entity.OrganizationRoleEnumCONTRACTOR),
 		}
 		if contract.VendorParticipantSelectedAt.Valid {
 			contractReturn.VendorSelectedAt = &contract.VendorParticipantSelectedAt.Time
@@ -219,6 +220,7 @@ func (s *ProjectService) GetByID(ctx context.Context, params GetProjectParams) (
 		contractReturn.Auditor = &ParticipantReturn{
 			OrgID:   contract.AuditorParticipantID.UUID,
 			OrgName: contract.AuditorName.String,
+			OrgRole: string(entity.OrganizationRoleEnumINDEPENDENTAUDITOR),
 		}
 		if contract.AuditorParticipantSelectedAt.Valid {
 			contractReturn.AuditorSelectedAt = &contract.AuditorParticipantSelectedAt.Time
@@ -235,6 +237,7 @@ func (s *ProjectService) GetByID(ctx context.Context, params GetProjectParams) (
 			OrgID:   gp.GovParticipantID,
 			OrgName: gp.OrgName,
 			LogoUrl: logoUrl,
+			OrgRole: string(entity.OrganizationRoleEnumGOVPARTNER),
 		})
 	}
 

@@ -138,7 +138,16 @@ SELECT EXISTS(
     WHERE progress_log_id = $1 AND deleted_at IS NULL
 ) as is_validated;
 
+-- name: CheckTaskHasPendingLog :one
+-- Check if task has any pending progress log (not yet validated by auditor)
+SELECT EXISTS(
+    SELECT 1 FROM progress_logs pl
+    LEFT JOIN progress_validations pv ON pv.progress_log_id = pl.id AND pv.deleted_at IS NULL
+    WHERE pl.task_item_id = $1 AND pl.deleted_at IS NULL AND pv.id IS NULL
+) as has_pending;
+
 -- ===== S-CURVE DATA QUERIES =====
+
 
 -- name: GetSCurveData :one
 -- Aggregate actual progress based on validated logs
@@ -181,7 +190,9 @@ SELECT
     pv.id as validation_id,
     pv.is_accepted,
     pv.real_progress_percentage,
-    pv.comment as validation_comment
+    pv.comment as validation_comment,
+    pv.auditor_id,
+    pv.created_at as validation_created_at
 FROM progress_logs pl
 JOIN task_items t ON t.id = pl.task_item_id
 JOIN organizations o ON o.id = pl.vendor_id

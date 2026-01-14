@@ -119,36 +119,72 @@ func (s *MonitoringService) GetTasks(ctx context.Context, params GetTasksParams)
 		leafMap[lt.ID] = true
 	}
 
-	// Build task map
+	// Get progress data per task
+	progressData, err := s.store.GetSCurveDataByTask(ctx, contract.ID)
+	if err != nil {
+		return result, errs.NewInternalServerError(err)
+	}
+	progressMap := make(map[uuid.UUID]struct {
+		Claimed int
+		Actual  int
+	})
+	for _, pd := range progressData {
+		progressMap[pd.TaskID] = struct {
+			Claimed int
+			Actual  int
+		}{
+			Claimed: int(pd.ClaimedPercentage),
+			Actual:  int(pd.ActualPercentage),
+		}
+	}
+
+	// Build task map with pointers
 	taskMap := make(map[uuid.UUID]*TaskReturn)
-	var rootTasks []TaskReturn
+	var rootTaskIDs []uuid.UUID
 
 	for _, t := range tasks {
-		tr := TaskReturn{
-			ID:          t.ID,
-			Title:       t.Title,
-			Description: t.Description,
-			Deadline:    t.Deadline,
-			Weight:      int(t.Weight),
-			ContractID:  t.ContractID,
-			IsLeaf:      leafMap[t.ID],
-			CreatedAt:   t.CreatedAt,
-			Children:    []TaskReturn{},
+		children := []TaskReturn{}
+
+		// Get progress for this task
+		progress := progressMap[t.ID]
+
+		tr := &TaskReturn{
+			ID:                t.ID,
+			Title:             t.Title,
+			Description:       t.Description,
+			Deadline:          t.Deadline,
+			Weight:            int(t.Weight),
+			ContractID:        t.ContractID,
+			IsLeaf:            leafMap[t.ID],
+			ClaimedPercentage: progress.Claimed,
+			ActualPercentage:  progress.Actual,
+			IsCompleted:       progress.Actual >= progress.Claimed && progress.Claimed > 0,
+			CreatedAt:         t.CreatedAt,
+			Children:          &children,
 		}
 		if t.ParentID.Valid {
 			tr.ParentID = &t.ParentID.UUID
+		} else {
+			// Track root task IDs
+			rootTaskIDs = append(rootTaskIDs, t.ID)
 		}
-		taskMap[t.ID] = &tr
+		taskMap[t.ID] = tr
 	}
 
-	// Build hierarchy
+	// Build hierarchy - add children to parents
 	for _, t := range tasks {
-		tr := taskMap[t.ID]
 		if t.ParentID.Valid {
 			if parent, ok := taskMap[t.ParentID.UUID]; ok {
-				parent.Children = append(parent.Children, *tr)
+				child := taskMap[t.ID]
+				*parent.Children = append(*parent.Children, *child)
 			}
-		} else {
+		}
+	}
+
+	// Collect root tasks AFTER hierarchy is built
+	rootTasks := make([]TaskReturn, 0, len(rootTaskIDs))
+	for _, id := range rootTaskIDs {
+		if tr, ok := taskMap[id]; ok {
 			rootTasks = append(rootTasks, *tr)
 		}
 	}
@@ -183,17 +219,40 @@ func (s *MonitoringService) GetLeafTasks(ctx context.Context, params GetTasksPar
 		return nil, errs.NewInternalServerError(err)
 	}
 
+	// Get progress data per task
+	progressData, err := s.store.GetSCurveDataByTask(ctx, contract.ID)
+	if err != nil {
+		return nil, errs.NewInternalServerError(err)
+	}
+	progressMap := make(map[uuid.UUID]struct {
+		Claimed int
+		Actual  int
+	})
+	for _, pd := range progressData {
+		progressMap[pd.TaskID] = struct {
+			Claimed int
+			Actual  int
+		}{
+			Claimed: int(pd.ClaimedPercentage),
+			Actual:  int(pd.ActualPercentage),
+		}
+	}
+
 	result := make([]TaskReturn, 0, len(leafTasks))
 	for _, t := range leafTasks {
+		progress := progressMap[t.ID]
 		tr := TaskReturn{
-			ID:          t.ID,
-			Title:       t.Title,
-			Description: t.Description,
-			Deadline:    t.Deadline,
-			Weight:      int(t.Weight),
-			ContractID:  t.ContractID,
-			IsLeaf:      true,
-			CreatedAt:   t.CreatedAt,
+			ID:                t.ID,
+			Title:             t.Title,
+			Description:       t.Description,
+			Deadline:          t.Deadline,
+			Weight:            int(t.Weight),
+			ContractID:        t.ContractID,
+			IsLeaf:            true,
+			ClaimedPercentage: progress.Claimed,
+			ActualPercentage:  progress.Actual,
+			IsCompleted:       progress.Actual >= progress.Claimed && progress.Claimed > 0,
+			CreatedAt:         t.CreatedAt,
 		}
 		if t.ParentID.Valid {
 			tr.ParentID = &t.ParentID.UUID
@@ -319,6 +378,15 @@ func (s *MonitoringService) SubmitProgress(ctx context.Context, params SubmitPro
 		return result, errs.NewBadRequest("CANNOT_REPORT_NON_LEAF_TASK")
 	}
 
+	// Check if task has pending log (not yet validated)
+	hasPending, err := s.store.CheckTaskHasPendingLog(ctx, params.TaskID)
+	if err != nil {
+		return result, errs.NewInternalServerError(err)
+	}
+	if hasPending {
+		return result, errs.NewBadRequest("TASK_HAS_PENDING_LOG")
+	}
+
 	// Create progress log with snapshot (INSERT...SELECT in SQL)
 	log, err := s.store.CreateProgressLog(ctx, entity.CreateProgressLogParams{
 		Report:             params.Report,
@@ -386,11 +454,19 @@ func (s *MonitoringService) GetProgressLogs(ctx context.Context, params GetProgr
 			if l.ValidationComment.Valid {
 				comment = &l.ValidationComment.String
 			}
+			// Recalculate isAccepted based on new logic: real >= claimed -> true
+			claimedPct := int(l.ProgressPercentage)
+			realPct := int(l.RealProgressPercentage.Int32)
+			isAccepted := realPct >= claimedPct
+
 			lr.Validation = &ValidationReturn{
 				ID:                     l.ValidationID.UUID,
-				IsAccepted:             l.IsAccepted.Bool,
-				RealProgressPercentage: int(l.RealProgressPercentage.Int32),
+				IsAccepted:             isAccepted,
+				ClaimedPercentage:      claimedPct,
+				RealProgressPercentage: realPct,
 				Comment:                comment,
+				AuditorID:              l.AuditorID.UUID,
+				CreatedAt:              l.ValidationCreatedAt.Time,
 			}
 		}
 
@@ -439,6 +515,7 @@ func (s *MonitoringService) GetPendingValidations(ctx context.Context, params Ge
 // ===== PROGRESS VALIDATIONS =====
 
 // ValidateProgress validates a progress log (approve/reject)
+// isAccepted is calculated: real == claimed -> true, real < claimed -> false, real > claimed -> error
 func (s *MonitoringService) ValidateProgress(ctx context.Context, params ValidateProgressParams) (ValidationReturn, error) {
 	var result ValidationReturn
 
@@ -460,8 +537,19 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 		return result, errs.NewBadRequest("PROGRESS_ALREADY_VALIDATED")
 	}
 
+	// Validate: auditor cannot give higher percentage than contractor claimed
+	claimedPercentage := int(log.ProgressPercentage)
+	if params.RealProgressPercentage > claimedPercentage {
+		return result, errs.NewBadRequest("AUDITOR_CANNOT_EXCEED_CLAIMED_PERCENTAGE")
+	}
+
+	// Calculate isAccepted based on comparison
+	// real == claimed -> accepted (true)
+	// real < claimed -> rejected (false)
+	isAccepted := params.RealProgressPercentage == claimedPercentage
+
 	// If rejected, comment is required
-	if !params.IsAccepted && (params.Comment == nil || *params.Comment == "") {
+	if !isAccepted && (params.Comment == nil || *params.Comment == "") {
 		return result, errs.NewBadRequest("COMMENT_REQUIRED_FOR_REJECTION")
 	}
 
@@ -471,7 +559,7 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 	}
 
 	validation, err := s.store.CreateProgressValidation(ctx, entity.CreateProgressValidationParams{
-		IsAccepted:             params.IsAccepted,
+		IsAccepted:             isAccepted,
 		Comment:                commentStr,
 		RealProgressPercentage: int32(params.RealProgressPercentage),
 		ProgressLogID:          log.ID,
@@ -484,6 +572,7 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 	result = ValidationReturn{
 		ID:                     validation.ID,
 		IsAccepted:             validation.IsAccepted,
+		ClaimedPercentage:      claimedPercentage,
 		RealProgressPercentage: int(validation.RealProgressPercentage),
 		AuditorID:              validation.AuditorID,
 		CreatedAt:              validation.CreatedAt,

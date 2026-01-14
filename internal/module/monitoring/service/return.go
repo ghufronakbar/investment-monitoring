@@ -10,16 +10,19 @@ import (
 // ===== TASK ITEMS =====
 
 type TaskReturn struct {
-	ID          uuid.UUID    `json:"id"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	Deadline    time.Time    `json:"deadline"`
-	Weight      int          `json:"weight"`
-	ParentID    *uuid.UUID   `json:"parentId"`
-	ContractID  uuid.UUID    `json:"contractId"`
-	Children    []TaskReturn `json:"children,omitempty"`
-	IsLeaf      bool         `json:"isLeaf"`
-	CreatedAt   time.Time    `json:"createdAt"`
+	ID                uuid.UUID     `json:"id"`
+	Title             string        `json:"title"`
+	Description       string        `json:"description"`
+	Deadline          time.Time     `json:"deadline"`
+	Weight            int           `json:"weight"`
+	ParentID          *uuid.UUID    `json:"parentId"`
+	ContractID        uuid.UUID     `json:"contractId"`
+	Children          *[]TaskReturn `json:"children"`
+	IsLeaf            bool          `json:"isLeaf"`
+	ClaimedPercentage int           `json:"claimedPercentage"` // Latest contractor claim
+	ActualPercentage  int           `json:"actualPercentage"`  // Latest auditor-approved
+	IsCompleted       bool          `json:"isCompleted"`       // actual >= claimed
+	CreatedAt         time.Time     `json:"createdAt"`
 }
 
 type TaskListReturn struct {
@@ -41,14 +44,15 @@ type ProgressLogReturn struct {
 	TaskTitle           string            `json:"taskTitle,omitempty"`
 	VendorID            uuid.UUID         `json:"vendorId"`
 	VendorName          string            `json:"vendorName,omitempty"`
-	Validation          *ValidationReturn `json:"validation,omitempty"`
+	Validation          *ValidationReturn `json:"validation"`
 	CreatedAt           time.Time         `json:"createdAt"`
 }
 
 type ValidationReturn struct {
 	ID                     uuid.UUID `json:"id"`
 	IsAccepted             bool      `json:"isAccepted"`
-	RealProgressPercentage int       `json:"realProgressPercentage"`
+	ClaimedPercentage      int       `json:"claimedPercentage"`      // Original contractor claim
+	RealProgressPercentage int       `json:"realProgressPercentage"` // Auditor's assessed value
 	Comment                *string   `json:"comment,omitempty"`
 	AuditorID              uuid.UUID `json:"auditorId"`
 	CreatedAt              time.Time `json:"createdAt"`

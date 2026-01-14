@@ -56,7 +56,6 @@ type GetProgressLogsParams struct {
 type ValidateProgressParams struct {
 	ProgressLogID          uuid.UUID
 	AuditorID              uuid.UUID // From JWT context
-	IsAccepted             bool      `json:"isAccepted"`
 	RealProgressPercentage int       `json:"realProgressPercentage" validate:"required,gte=0,lte=100"`
 	Comment                *string   `json:"comment"`
 }

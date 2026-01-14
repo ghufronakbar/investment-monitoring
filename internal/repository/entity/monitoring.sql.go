@@ -28,6 +28,22 @@ func (q *Queries) CheckProgressLogValidated(ctx context.Context, progressLogID u
 	return is_validated, err
 }
 
+const checkTaskHasPendingLog = `-- name: CheckTaskHasPendingLog :one
+SELECT EXISTS(
+    SELECT 1 FROM progress_logs pl
+    LEFT JOIN progress_validations pv ON pv.progress_log_id = pl.id AND pv.deleted_at IS NULL
+    WHERE pl.task_item_id = $1 AND pl.deleted_at IS NULL AND pv.id IS NULL
+) as has_pending
+`
+
+// Check if task has any pending progress log (not yet validated by auditor)
+func (q *Queries) CheckTaskHasPendingLog(ctx context.Context, taskItemID uuid.UUID) (bool, error) {
+	row := q.db.QueryRowContext(ctx, checkTaskHasPendingLog, taskItemID)
+	var has_pending bool
+	err := row.Scan(&has_pending)
+	return has_pending, err
+}
+
 const createProgressLog = `-- name: CreateProgressLog :one
 
 INSERT INTO progress_logs (
@@ -189,7 +205,9 @@ SELECT
     pv.id as validation_id,
     pv.is_accepted,
     pv.real_progress_percentage,
-    pv.comment as validation_comment
+    pv.comment as validation_comment,
+    pv.auditor_id,
+    pv.created_at as validation_created_at
 FROM progress_logs pl
 JOIN task_items t ON t.id = pl.task_item_id
 JOIN organizations o ON o.id = pl.vendor_id
@@ -217,6 +235,8 @@ type GetAllProgressLogsByContractIDRow struct {
 	IsAccepted             sql.NullBool   `json:"is_accepted"`
 	RealProgressPercentage sql.NullInt32  `json:"real_progress_percentage"`
 	ValidationComment      sql.NullString `json:"validation_comment"`
+	AuditorID              uuid.NullUUID  `json:"auditor_id"`
+	ValidationCreatedAt    sql.NullTime   `json:"validation_created_at"`
 }
 
 func (q *Queries) GetAllProgressLogsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetAllProgressLogsByContractIDRow, error) {
@@ -247,6 +267,8 @@ func (q *Queries) GetAllProgressLogsByContractID(ctx context.Context, contractID
 			&i.IsAccepted,
 			&i.RealProgressPercentage,
 			&i.ValidationComment,
+			&i.AuditorID,
+			&i.ValidationCreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -610,6 +632,7 @@ func (q *Queries) GetRootTasksByContractID(ctx context.Context, contractID uuid.
 }
 
 const getSCurveData = `-- name: GetSCurveData :one
+
 
 SELECT 
     COALESCE(SUM(

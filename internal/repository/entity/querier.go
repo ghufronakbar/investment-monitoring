@@ -20,6 +20,8 @@ type Querier interface {
 	// Check if user is already a member of organization
 	CheckMembershipExists(ctx context.Context, arg CheckMembershipExistsParams) (bool, error)
 	CheckProgressLogValidated(ctx context.Context, progressLogID uuid.UUID) (bool, error)
+	// Check if task has any pending progress log (not yet validated by auditor)
+	CheckTaskHasPendingLog(ctx context.Context, taskItemID uuid.UUID) (bool, error)
 	// Check if email already exists
 	CheckUserEmailExists(ctx context.Context, email string) (bool, error)
 	CountExample(ctx context.Context, search string) (int64, error)
