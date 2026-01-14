@@ -19,6 +19,7 @@ type Querier interface {
 	CheckGovParticipantExists(ctx context.Context, arg CheckGovParticipantExistsParams) (bool, error)
 	// Check if user is already a member of organization
 	CheckMembershipExists(ctx context.Context, arg CheckMembershipExistsParams) (bool, error)
+	CheckProgressLogValidated(ctx context.Context, progressLogID uuid.UUID) (bool, error)
 	// Check if email already exists
 	CheckUserEmailExists(ctx context.Context, email string) (bool, error)
 	CountExample(ctx context.Context, search string) (int64, error)
@@ -33,20 +34,34 @@ type Querier interface {
 	// ===== ORGANIZATION MEMBER QUERIES =====
 	// Link user to organization with specific role
 	CreateOrganizationMember(ctx context.Context, arg CreateOrganizationMemberParams) (OrganizationMember, error)
+	// ===== PROGRESS LOGS QUERIES =====
+	// CRITICAL: Use INSERT...SELECT to atomically snapshot task data
+	CreateProgressLog(ctx context.Context, arg CreateProgressLogParams) (ProgressLog, error)
+	// ===== PROGRESS VALIDATIONS QUERIES =====
+	CreateProgressValidation(ctx context.Context, arg CreateProgressValidationParams) (ProgressValidation, error)
 	// internal/repository/queries/project.sql
 	// SQLC queries for PROJECT module
 	// ===== PROJECT QUERIES =====
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	// ===== PROJECT SETTINGS QUERIES =====
 	CreateProjectSettings(ctx context.Context, arg CreateProjectSettingsParams) (ProjectSetting, error)
+	// internal/repository/queries/monitoring.sql
+	// SQLC queries for MONITORING module (WBS & Progress)
+	// ===== TASK ITEMS (WBS) QUERIES =====
+	CreateTask(ctx context.Context, arg CreateTaskParams) (TaskItem, error)
 	// Create new user (password can be null for invited users)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) error
+	DeleteTask(ctx context.Context, id uuid.UUID) error
+	GetAllProgressLogsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetAllProgressLogsByContractIDRow, error)
+	GetChildTasks(ctx context.Context, parentID uuid.NullUUID) ([]TaskItem, error)
 	GetContractByID(ctx context.Context, id uuid.UUID) (Contract, error)
 	GetContractByProjectID(ctx context.Context, projectID uuid.UUID) (Contract, error)
 	GetContractWithDetails(ctx context.Context, projectID uuid.UUID) (GetContractWithDetailsRow, error)
 	GetExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
 	GetGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetGovParticipantsByContractIDRow, error)
+	// Leaf tasks are tasks that don't have any children
+	GetLeafTasksByContractID(ctx context.Context, contractID uuid.UUID) ([]TaskItem, error)
 	GetListExample(ctx context.Context, arg GetListExampleParams) ([]Example, error)
 	// Get organization by ID
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
@@ -54,8 +69,24 @@ type Querier interface {
 	GetOrganizationMember(ctx context.Context, arg GetOrganizationMemberParams) (GetOrganizationMemberRow, error)
 	// Get all members of an organization
 	GetOrganizationMembers(ctx context.Context, organizationID uuid.UUID) ([]GetOrganizationMembersRow, error)
+	// Logs that don't have a validation entry yet
+	GetPendingValidationLogs(ctx context.Context, contractID uuid.UUID) ([]GetPendingValidationLogsRow, error)
+	GetProgressLogByID(ctx context.Context, id uuid.UUID) (ProgressLog, error)
+	GetProgressLogWithDetails(ctx context.Context, id uuid.UUID) (GetProgressLogWithDetailsRow, error)
+	GetProgressLogsByTaskID(ctx context.Context, taskItemID uuid.UUID) ([]GetProgressLogsByTaskIDRow, error)
 	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
 	GetProjectSettingsByProjectID(ctx context.Context, projectID uuid.UUID) (ProjectSetting, error)
+	GetRootTasksByContractID(ctx context.Context, contractID uuid.UUID) ([]TaskItem, error)
+	// ===== S-CURVE DATA QUERIES =====
+	// Aggregate actual progress based on validated logs
+	GetSCurveData(ctx context.Context, contractID uuid.UUID) (GetSCurveDataRow, error)
+	// Per-task progress for detailed S-Curve
+	GetSCurveDataByTask(ctx context.Context, contractID uuid.UUID) ([]GetSCurveDataByTaskRow, error)
+	GetTaskByID(ctx context.Context, id uuid.UUID) (TaskItem, error)
+	GetTaskWithParent(ctx context.Context, id uuid.UUID) (GetTaskWithParentRow, error)
+	GetTasksByContractID(ctx context.Context, contractID uuid.UUID) ([]TaskItem, error)
+	// Sum of all root task weights for a contract
+	GetTotalRootWeight(ctx context.Context, contractID uuid.UUID) (int32, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	// internal/repository/queries/iam.sql
 	// SQLC queries for IAM (Identity & Access Management) module
@@ -69,6 +100,7 @@ type Querier interface {
 	// ===== PROJECT ACCESS HELPERS =====
 	// Check if user's organization has access to a project via contract
 	GetUserProjectAccess(ctx context.Context, arg GetUserProjectAccessParams) (GetUserProjectAccessRow, error)
+	GetValidationByProgressLogID(ctx context.Context, progressLogID uuid.UUID) (ProgressValidation, error)
 	// List all organizations with pagination
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
 	ListProjects(ctx context.Context) ([]Project, error)
@@ -80,6 +112,7 @@ type Querier interface {
 	UpdateExampleByID(ctx context.Context, arg UpdateExampleByIDParams) (Example, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateProjectSettings(ctx context.Context, arg UpdateProjectSettingsParams) (ProjectSetting, error)
+	UpdateTask(ctx context.Context, arg UpdateTaskParams) (TaskItem, error)
 	UpsertProjectSettings(ctx context.Context, arg UpsertProjectSettingsParams) (ProjectSetting, error)
 }
 

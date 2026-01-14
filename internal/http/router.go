@@ -20,6 +20,10 @@ import (
 	project_controller "investment_monitoring/internal/module/project/controller"
 	project_service "investment_monitoring/internal/module/project/service"
 
+	// Monitoring module
+	monitoring_controller "investment_monitoring/internal/module/monitoring/controller"
+	monitoring_service "investment_monitoring/internal/module/monitoring/service"
+
 	// Support services
 	mail_service "investment_monitoring/internal/module/support/mail/service"
 	token_service "investment_monitoring/internal/module/support/token/service"
@@ -49,11 +53,15 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	// Project services
 	projectSvc := project_service.NewService(db, cfg)
 
+	// Monitoring services
+	monitoringSvc := monitoring_service.NewService(db, cfg)
+
 	// 2. =========== INITIAL HANDLER ===========
 	subexampleHandler := subexample_controller.NewHandler(subexampleSvc)
 	authHandler := auth_controller.NewHandler(authSvc)
 	orgHandler := organization_controller.NewHandler(orgSvc, db)
 	projectHandler := project_controller.NewHandler(projectSvc, db)
+	monitoringHandler := monitoring_controller.NewHandler(monitoringSvc, db)
 
 	// 3. =========== MANAGE ROUTING ===========
 	r := chi.NewRouter()
@@ -86,6 +94,12 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	r.Route("/project", func(r chi.Router) {
 		r.Use(authMiddleware)
 		r.Mount("/", projectHandler.Routes())
+	})
+
+	// Monitoring routes (protected)
+	r.Route("/monitoring", func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Mount("/", monitoringHandler.Routes())
 	})
 
 	return r
