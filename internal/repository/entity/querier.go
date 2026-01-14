@@ -11,11 +11,44 @@ import (
 )
 
 type Querier interface {
+	// Check if user is already a member of organization
+	CheckMembershipExists(ctx context.Context, arg CheckMembershipExistsParams) (bool, error)
+	// Check if email already exists
+	CheckUserEmailExists(ctx context.Context, email string) (bool, error)
 	CountExample(ctx context.Context, search string) (int64, error)
+	// Count total organizations
+	CountOrganizations(ctx context.Context) (int64, error)
 	CreateExample(ctx context.Context, arg CreateExampleParams) (Example, error)
+	// ===== ORGANIZATION QUERIES =====
+	// Create new organization
+	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
+	// ===== ORGANIZATION MEMBER QUERIES =====
+	// Link user to organization with specific role
+	CreateOrganizationMember(ctx context.Context, arg CreateOrganizationMemberParams) (OrganizationMember, error)
+	// Create new user (password can be null for invited users)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	GetExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
 	GetListExample(ctx context.Context, arg GetListExampleParams) ([]Example, error)
+	// Get organization by ID
+	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
+	// Get membership details
+	GetOrganizationMember(ctx context.Context, arg GetOrganizationMemberParams) (GetOrganizationMemberRow, error)
+	// Get all members of an organization
+	GetOrganizationMembers(ctx context.Context, organizationID uuid.UUID) ([]GetOrganizationMembersRow, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
+	// internal/repository/queries/iam.sql
+	// SQLC queries for IAM (Identity & Access Management) module
+	// ===== USER QUERIES =====
+	// Get user with all fields including password for authentication
+	GetUserByEmailFull(ctx context.Context, email string) (User, error)
+	// Get user by ID
+	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Get all organization memberships for a user
+	GetUserMemberships(ctx context.Context, userID uuid.UUID) ([]GetUserMembershipsRow, error)
+	// List all organizations with pagination
+	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
+	// Set password for user (used when user activates account)
+	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) (User, error)
 	SoftDeleteExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
 	UpdateExampleByID(ctx context.Context, arg UpdateExampleByIDParams) (Example, error)
 }

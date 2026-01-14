@@ -4,10 +4,22 @@ package http
 import (
 	"investment_monitoring/config"
 
-	_ "investment_monitoring/internal/http/internal_middleware"
+	"investment_monitoring/internal/http/internal_middleware"
+
+	// Example module
 	subexample_controller "investment_monitoring/internal/module/example/subexample/controller"
 	subexample_service "investment_monitoring/internal/module/example/subexample/service"
+
+	// IAM module
+	auth_controller "investment_monitoring/internal/module/iam/auth/controller"
+	auth_service "investment_monitoring/internal/module/iam/auth/service"
+	organization_controller "investment_monitoring/internal/module/iam/organization/controller"
+	organization_service "investment_monitoring/internal/module/iam/organization/service"
+
+	// Support services
+	mail_service "investment_monitoring/internal/module/support/mail/service"
 	token_service "investment_monitoring/internal/module/support/token/service"
+
 	repository "investment_monitoring/internal/repository/entity"
 
 	"github.com/go-chi/chi/v5"
@@ -16,21 +28,50 @@ import (
 
 func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) chi.Router {
 	// 1. =========== INITIAL SERVICE / MIDDLEWARE ===========
-	// TODO: create new service here
-	_ = token_service.NewService(cfg)
-	// _ = internal_middleware.AuthMiddleware(*tokenSvc)
+	// Support services
+	tokenSvc := token_service.NewService(cfg)
+	mailSvc := mail_service.NewService(cfg)
+
+	// Auth middleware
+	authMiddleware := internal_middleware.AuthMiddleware(*tokenSvc)
+
+	// Example service
 	subexampleSvc := subexample_service.NewService(db)
 
+	// IAM services
+	authSvc := auth_service.NewService(db, tokenSvc, cfg)
+	orgSvc := organization_service.NewService(db, mailSvc, cfg)
+
 	// 2. =========== INITIAL HANDLER ===========
-	// TODO: create new http handler here
 	subexampleHandler := subexample_controller.NewHandler(subexampleSvc)
+	authHandler := auth_controller.NewHandler(authSvc)
+	orgHandler := organization_controller.NewHandler(orgSvc, db)
 
 	// 3. =========== MANAGE ROUTING ===========
 	r := chi.NewRouter()
 
+	// Example routes
 	r.Route("/example", func(r chi.Router) {
-		// r.Use(auth)
+		r.Use(authMiddleware)
 		r.Mount("/subexample", subexampleHandler.Routes())
+	})
+
+	// IAM routes
+	r.Route("/iam", func(r chi.Router) {
+		// Auth routes (public, no auth required)
+		r.Mount("/auth", authHandler.Routes())
+
+		// Organization routes
+		r.Route("/organization", func(r chi.Router) {
+			// Public route - no auth required
+			r.Get("/registered", orgHandler.GetRegisteredOrganizations)
+
+			// Protected routes - require auth
+			r.Group(func(r chi.Router) {
+				r.Use(authMiddleware)
+				r.Mount("/", orgHandler.Routes())
+			})
+		})
 	})
 
 	return r

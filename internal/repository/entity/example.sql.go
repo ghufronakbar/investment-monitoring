@@ -17,7 +17,6 @@ FROM examples
 WHERE
     deleted_at IS NULL
     AND (
-        -- Logika search harus SAMA PERSIS dengan GetListExample
         $1::text = ''
         OR name ILIKE '%' || $1::text || '%'
     )

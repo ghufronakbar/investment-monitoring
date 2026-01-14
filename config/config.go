@@ -28,10 +28,11 @@ type Config struct {
 	DATABASE_URL string
 
 	// REDIS
-	REDIS_HOST string
-	REDIS_PORT string
-	REDIS_PASS string
-	REDIS_DB   int
+	REDIS_HOST   string
+	REDIS_PORT   string
+	REDIS_PASS   string
+	REDIS_DB     int
+	REDIS_PREFIX string
 
 	// JWT
 	JWT_ACCESS_TOKEN_SECRET  string
@@ -95,10 +96,11 @@ func Load() *Config {
 		DATABASE_URL: getEnv("DATABASE_URL"),
 
 		// REDIS
-		REDIS_HOST: getEnv("REDIS_HOST"),
-		REDIS_PORT: getEnv("REDIS_PORT"),
-		REDIS_PASS: getEnv("REDIS_PASS"),
-		REDIS_DB:   redisDB,
+		REDIS_HOST:   getEnv("REDIS_HOST"),
+		REDIS_PORT:   getEnv("REDIS_PORT"),
+		REDIS_PASS:   getEnv("REDIS_PASS"),
+		REDIS_DB:     redisDB,
+		REDIS_PREFIX: getEnvOptional("REDIS_PREFIX", "invmonitor"),
 
 		// JWT
 		JWT_ACCESS_TOKEN_SECRET:  getEnv("JWT_ACCESS_TOKEN_SECRET"),
@@ -131,4 +133,11 @@ func getEnv(key string) string {
 		return value
 	}
 	panic("ENV " + key + " is required")
+}
+
+func getEnvOptional(key string, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }
