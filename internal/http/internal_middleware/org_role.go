@@ -220,3 +220,10 @@ func GovSupervisorOnly() []entity.OrganizationRoleEnum {
 		entity.OrganizationRoleEnumGOVSUPERVISOR,
 	}
 }
+
+func GovSupervisorAndExecutingAgency() []entity.OrganizationRoleEnum {
+	return []entity.OrganizationRoleEnum{
+		entity.OrganizationRoleEnumGOVSUPERVISOR,
+		entity.OrganizationRoleEnumEXECUTINGAGENCY,
+	}
+}

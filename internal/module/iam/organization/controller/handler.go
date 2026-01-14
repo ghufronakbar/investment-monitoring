@@ -40,7 +40,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Route("/{orgId}", func(r chi.Router) {
 		// Create Organization - Only GOV_SUPERVISOR with ADMIN role can create new organizations
 		r.With(internal_middleware.OrgRoleMiddleware(h.store, internal_middleware.OrgRoleMiddlewareOptions{
-			AllowedOrgRoles:    internal_middleware.GovSupervisorOnly(),
+			AllowedOrgRoles:    internal_middleware.GovSupervisorAndExecutingAgency(),
 			AllowedMemberRoles: internal_middleware.AdminOnly(),
 		})).Post("/", h.Create)
 
