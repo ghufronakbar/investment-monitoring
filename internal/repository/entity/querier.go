@@ -15,6 +15,7 @@ type Querier interface {
 	AddGovParticipant(ctx context.Context, arg AddGovParticipantParams) (GovParticipant, error)
 	AssignAuditor(ctx context.Context, arg AssignAuditorParams) (Contract, error)
 	AssignExecutingAgency(ctx context.Context, arg AssignExecutingAgencyParams) (Contract, error)
+	AssignTicket(ctx context.Context, arg AssignTicketParams) (Ticket, error)
 	AssignVendorToContract(ctx context.Context, arg AssignVendorToContractParams) (Contract, error)
 	CheckGovParticipantExists(ctx context.Context, arg CheckGovParticipantExistsParams) (bool, error)
 	// Check if user is already a member of organization
@@ -51,20 +52,32 @@ type Querier interface {
 	// SQLC queries for MONITORING module (WBS & Progress)
 	// ===== TASK ITEMS (WBS) QUERIES =====
 	CreateTask(ctx context.Context, arg CreateTaskParams) (TaskItem, error)
+	// internal/repository/queries/tracker.sql
+	// SQLC queries for TRACKER module (Ticketing System)
+	// Uses Event-Sourced Status: current status = latest log entry
+	// ===== TICKETS QUERIES =====
+	CreateTicket(ctx context.Context, arg CreateTicketParams) (Ticket, error)
+	// ===== TICKET LOGS QUERIES =====
+	CreateTicketLog(ctx context.Context, arg CreateTicketLogParams) (TicketLog, error)
 	// Create new user (password can be null for invited users)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) error
 	DeleteTask(ctx context.Context, id uuid.UUID) error
 	GetAllProgressLogsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetAllProgressLogsByContractIDRow, error)
 	GetChildTasks(ctx context.Context, parentID uuid.NullUUID) ([]TaskItem, error)
+	// Filter CLOSED tickets only
+	GetClosedTicketsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetClosedTicketsByContractIDRow, error)
 	GetContractByID(ctx context.Context, id uuid.UUID) (Contract, error)
 	GetContractByProjectID(ctx context.Context, projectID uuid.UUID) (Contract, error)
 	GetContractWithDetails(ctx context.Context, projectID uuid.UUID) (GetContractWithDetailsRow, error)
 	GetExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
 	GetGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetGovParticipantsByContractIDRow, error)
+	GetLatestTicketStatus(ctx context.Context, ticketID uuid.UUID) (TicketStatusEnum, error)
 	// Leaf tasks are tasks that don't have any children
 	GetLeafTasksByContractID(ctx context.Context, contractID uuid.UUID) ([]TaskItem, error)
 	GetListExample(ctx context.Context, arg GetListExampleParams) ([]Example, error)
+	// Filter non-CLOSED tickets
+	GetOpenTicketsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetOpenTicketsByContractIDRow, error)
 	// Get organization by ID
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
 	// Get membership details
@@ -87,6 +100,12 @@ type Querier interface {
 	GetTaskByID(ctx context.Context, id uuid.UUID) (TaskItem, error)
 	GetTaskWithParent(ctx context.Context, id uuid.UUID) (GetTaskWithParentRow, error)
 	GetTasksByContractID(ctx context.Context, contractID uuid.UUID) ([]TaskItem, error)
+	GetTicketByID(ctx context.Context, id uuid.UUID) (GetTicketByIDRow, error)
+	GetTicketLogsByTicketID(ctx context.Context, ticketID uuid.UUID) ([]GetTicketLogsByTicketIDRow, error)
+	// For access control - get ticket with contract info
+	GetTicketWithContract(ctx context.Context, id uuid.UUID) (GetTicketWithContractRow, error)
+	// Uses DISTINCT ON to avoid N+1 query for current_status
+	GetTicketsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetTicketsByContractIDRow, error)
 	// Sum of all root task weights for a contract
 	GetTotalRootWeight(ctx context.Context, contractID uuid.UUID) (int32, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
