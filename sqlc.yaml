@@ -1,0 +1,13 @@
+# sqlc.yaml
+version: "2"
+sql:
+  - schema: "migrations"
+    queries: "internal/repository/queries"
+    engine: "postgresql"
+    gen:
+      go:
+        package: "entity"
+        out: "internal/repository/entity"
+        sql_package: "database/sql"
+        emit_json_tags: true
+        emit_interface: true

@@ -1,0 +1,31 @@
+# Root project
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # Command build → output binary ke tmp/
+  cmd = "go build -o ./tmp/app ./cmd/api"
+
+  # Binary yang dijalankan
+  bin = "tmp/app"
+
+  # Delay reload (ms)
+  delay = 1000
+
+  # File yang dipantau
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  exclude_dir = ["tmp", "vendor", "node_modules"]
+
+  # Stop lama sebelum run ulang
+  stop_on_error = true
+  send_interrupt = true
+  kill_delay = 500
+
+[log]
+  time = true
+
+[color]
+  main = "yellow"
+  watcher = "cyan"
+  build = "green"
+  runner = "magenta"
