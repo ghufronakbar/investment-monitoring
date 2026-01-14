@@ -16,6 +16,10 @@ import (
 	organization_controller "investment_monitoring/internal/module/iam/organization/controller"
 	organization_service "investment_monitoring/internal/module/iam/organization/service"
 
+	// Project module
+	project_controller "investment_monitoring/internal/module/project/controller"
+	project_service "investment_monitoring/internal/module/project/service"
+
 	// Support services
 	mail_service "investment_monitoring/internal/module/support/mail/service"
 	token_service "investment_monitoring/internal/module/support/token/service"
@@ -42,10 +46,14 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	authSvc := auth_service.NewService(db, tokenSvc, cfg)
 	orgSvc := organization_service.NewService(db, mailSvc, cfg)
 
+	// Project services
+	projectSvc := project_service.NewService(db, cfg)
+
 	// 2. =========== INITIAL HANDLER ===========
 	subexampleHandler := subexample_controller.NewHandler(subexampleSvc)
 	authHandler := auth_controller.NewHandler(authSvc)
 	orgHandler := organization_controller.NewHandler(orgSvc, db)
+	projectHandler := project_controller.NewHandler(projectSvc, db)
 
 	// 3. =========== MANAGE ROUTING ===========
 	r := chi.NewRouter()
@@ -72,6 +80,12 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 				r.Mount("/", orgHandler.Routes())
 			})
 		})
+	})
+
+	// Project routes (protected)
+	r.Route("/project", func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Mount("/", projectHandler.Routes())
 	})
 
 	return r

@@ -11,6 +11,12 @@ import (
 )
 
 type Querier interface {
+	// ===== GOV PARTICIPANTS QUERIES =====
+	AddGovParticipant(ctx context.Context, arg AddGovParticipantParams) (GovParticipant, error)
+	AssignAuditor(ctx context.Context, arg AssignAuditorParams) (Contract, error)
+	AssignExecutingAgency(ctx context.Context, arg AssignExecutingAgencyParams) (Contract, error)
+	AssignVendorToContract(ctx context.Context, arg AssignVendorToContractParams) (Contract, error)
+	CheckGovParticipantExists(ctx context.Context, arg CheckGovParticipantExistsParams) (bool, error)
 	// Check if user is already a member of organization
 	CheckMembershipExists(ctx context.Context, arg CheckMembershipExistsParams) (bool, error)
 	// Check if email already exists
@@ -18,6 +24,8 @@ type Querier interface {
 	CountExample(ctx context.Context, search string) (int64, error)
 	// Count total organizations
 	CountOrganizations(ctx context.Context) (int64, error)
+	// ===== CONTRACT QUERIES =====
+	CreateContract(ctx context.Context, arg CreateContractParams) (Contract, error)
 	CreateExample(ctx context.Context, arg CreateExampleParams) (Example, error)
 	// ===== ORGANIZATION QUERIES =====
 	// Create new organization
@@ -25,9 +33,20 @@ type Querier interface {
 	// ===== ORGANIZATION MEMBER QUERIES =====
 	// Link user to organization with specific role
 	CreateOrganizationMember(ctx context.Context, arg CreateOrganizationMemberParams) (OrganizationMember, error)
+	// internal/repository/queries/project.sql
+	// SQLC queries for PROJECT module
+	// ===== PROJECT QUERIES =====
+	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
+	// ===== PROJECT SETTINGS QUERIES =====
+	CreateProjectSettings(ctx context.Context, arg CreateProjectSettingsParams) (ProjectSetting, error)
 	// Create new user (password can be null for invited users)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) error
+	GetContractByID(ctx context.Context, id uuid.UUID) (Contract, error)
+	GetContractByProjectID(ctx context.Context, projectID uuid.UUID) (Contract, error)
+	GetContractWithDetails(ctx context.Context, projectID uuid.UUID) (GetContractWithDetailsRow, error)
 	GetExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
+	GetGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetGovParticipantsByContractIDRow, error)
 	GetListExample(ctx context.Context, arg GetListExampleParams) ([]Example, error)
 	// Get organization by ID
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
@@ -35,6 +54,8 @@ type Querier interface {
 	GetOrganizationMember(ctx context.Context, arg GetOrganizationMemberParams) (GetOrganizationMemberRow, error)
 	// Get all members of an organization
 	GetOrganizationMembers(ctx context.Context, organizationID uuid.UUID) ([]GetOrganizationMembersRow, error)
+	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
+	GetProjectSettingsByProjectID(ctx context.Context, projectID uuid.UUID) (ProjectSetting, error)
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	// internal/repository/queries/iam.sql
 	// SQLC queries for IAM (Identity & Access Management) module
@@ -45,12 +66,21 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	// Get all organization memberships for a user
 	GetUserMemberships(ctx context.Context, userID uuid.UUID) ([]GetUserMembershipsRow, error)
+	// ===== PROJECT ACCESS HELPERS =====
+	// Check if user's organization has access to a project via contract
+	GetUserProjectAccess(ctx context.Context, arg GetUserProjectAccessParams) (GetUserProjectAccessRow, error)
 	// List all organizations with pagination
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
+	ListProjects(ctx context.Context) ([]Project, error)
+	// Get all projects where user's organization is a participant
+	ListUserAccessibleProjects(ctx context.Context, userID uuid.UUID) ([]Project, error)
 	// Set password for user (used when user activates account)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) (User, error)
 	SoftDeleteExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
 	UpdateExampleByID(ctx context.Context, arg UpdateExampleByIDParams) (Example, error)
+	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
+	UpdateProjectSettings(ctx context.Context, arg UpdateProjectSettingsParams) (ProjectSetting, error)
+	UpsertProjectSettings(ctx context.Context, arg UpsertProjectSettingsParams) (ProjectSetting, error)
 }
 
 var _ Querier = (*Queries)(nil)
