@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chiMw "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func main() {
@@ -38,6 +39,19 @@ func main() {
 
 	// HTTP router root
 	r := chi.NewRouter()
+
+	// --- SETUP CORS: ALLOW ALL ---
+	r.Use(cors.Handler(cors.Options{
+		// AllowedOrigins:   []string{"https://foo.com"}, // Gunakan ini untuk restrict domain tertentu
+		AllowedOrigins:   []string{"https://*", "http://*"}, // Allow semua https dan http
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
+	// -----------------------------
+
 	r.Use(chiMw.RequestID)
 	r.Use(internal_middleware.RequestLogger)
 	r.Use(chiMw.StripSlashes)
