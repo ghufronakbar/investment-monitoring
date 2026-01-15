@@ -6,99 +6,517 @@ Pemantauan progres fisik lapangan secara real-time, transparan, dan terstruktur.
 
 ---
 
-### Story 1: Define WBS (Work Breakdown Structure)
+## Task Routes (WBS Management)
 
-**As an** EXECUTING_AGENCY (PMO Team),
-**I want to** create a hierarchical structure of tasks with weights and deadlines,
-**So that** we have a "Master Schedule" (Baseline) to measure the project's performance.
+### 1. Create Task
 
-#### Acceptance Criteria
+**Endpoint:** `POST /monitoring/project/{projectId}/task`
 
-1.  **Hierarchy Support (Parent-Child):**
-    - User bisa membuat Task yang memiliki Sub-Task (Parent -> Child).
-    - Sistem mendukung kedalaman level tak terbatas (via `parent_id` self-reference).
-2.  **Weight Validation:**
-    - Setiap task memiliki `weight` (Bobot).
-    - Validasi Backend: Total bobot seluruh _Task_ di level Root harus bernilai 100% (atau representasi integer 100).
-3.  **Deadline Constraint:**
-    - Setiap task wajib memiliki `deadline`.
-    - Deadline Child tidak boleh melebihi Deadline Parent (Logical Validation).
-4.  **Leaf Node Logic:**
-    - Hanya Task yang **tidak memiliki anak** (Leaf Node) yang nantinya akan muncul di dropdown pelaporan progres Kontraktor. Task yang memiliki anak dianggap sebagai "Header/Grouping" saja.
+**Description:** Membuat task baru dalam WBS (Work Breakdown Structure).
 
-#### Technical Notes & Schema Mapping
+**Authentication:** ✅ Bearer Token (Access Token)
 
-- **Endpoint:** `POST /monitoring/project/{id}/tasks`
-- **Table:** `task_items`
-  - `id` (UUID)
-  - `title` (TEXT)
-  - `weight` (INT) -> _Bobot perencanaan_
-  - `deadline` (TIMESTAMPTZ)
-  - `parent_id` (UUID, Nullable) -> _Untuk hierarki_
-  - `contract_id` (UUID)
+**Authorization:**
+
+- **Required:** User harus ADMIN dari EXECUTING_AGENCY yang terdaftar di project
+
+**URL Parameters:**
+
+- `projectId`: UUID of the project
+
+**Request Body:**
+
+```json
+{
+  "title": "string (required)",
+  "description": "string (required)",
+  "deadline": "timestamp (required, ISO 8601)",
+  "weight": 10,
+  "parentId": "uuid | null (optional, for sub-tasks)"
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "title": "string",
+  "description": "string",
+  "deadline": "timestamp",
+  "weight": 10,
+  "parentId": "uuid | null",
+  "contractId": "uuid",
+  "children": null,
+  "isLeaf": true,
+  "claimedPercentage": 0,
+  "actualPercentage": 0,
+  "isCompleted": false,
+  "createdAt": "timestamp"
+}
+```
+
+**Flow:**
+
+1. Validasi user adalah ADMIN dari EXECUTING_AGENCY
+2. Validasi weight 0-100
+3. Jika parentId diberikan, validasi parent exists dan deadline child <= parent
+4. Buat task_item dengan contract_id dari project
+
+**Error Codes:**
+
+- `EXECUTING_AGENCY_ADMIN_REQUIRED` - Bukan ADMIN dari EXECUTING_AGENCY
+- `PARENT_NOT_FOUND` - Parent task tidak ditemukan
+- `INVALID_DEADLINE` - Deadline melebihi parent
+
+**Success Code:** `SUCCESS_CREATE_TASK`
 
 ---
 
-### Story 2: Submit Progress Report
+### 2. Get Tasks (Tree View)
 
-**As a** CONTRACTOR (Site Engineer),
-**I want to** report the cumulative progress of a specific task with visual evidence,
-**So that** I can claim the work done and trigger a validation request.
+**Endpoint:** `GET /monitoring/project/{projectId}/task`
 
-#### Acceptance Criteria
+**Description:** Mendapatkan semua task dalam bentuk hierarki (tree) beserta status progress.
 
-1.  **Cumulative Reporting:**
-    - User memilih Task (Leaf Node) dari WBS.
-    - Input `progress_percentage` (Nilai 0-100). Ini adalah angka klaim sepihak dari Kontraktor.
-2.  **Mandatory Evidence (No Pic = Hoax):**
-    - User **WAJIB** mengupload minimal 1 foto bukti lapangan.
-    - Sistem menyimpan URL foto tersebut dalam bentuk Array (`TEXT[]`) karena satu task bisa memiliki banyak angle foto.
-3.  **Snapshotting (Data Integrity):**
-    - **CRITICAL:** Saat data disimpan, sistem harus **meng-copy** nilai `title`, `description`, dan `weight` dari tabel `task_items` ke dalam kolom `snapshot_...` di tabel `progress_logs`.
-    - _Alasan:_ Jika di masa depan PMO mengubah bobot di WBS (`task_items`), data history laporan ini tidak boleh ikut berubah.
-4.  **Status:** Laporan yang masuk otomatis berstatus "Pending Validation" (karena belum ada entry di tabel `progress_validations`).
+**Authentication:** ✅ Bearer Token (Access Token)
 
-#### Technical Notes & Schema Mapping
+**Authorization:** Any project participant
 
-- **Endpoint:** `POST /monitoring/task/{id}/log`
-- **Table:** `progress_logs`
-  - `progress_percentage` (INT) -> _Klaim Kontraktor_
-  - `evidence_image_urls` (TEXT[]) -> _Array URL Cloudinary_
-  - `snapshot_weight` (INT) -> _Copy dari task_items.weight saat itu_
-  - `snapshot_title` (TEXT)
-  - `task_item_id` (UUID)
-  - `vendor_id` (UUID) -> _Diambil dari token login user_
+**URL Parameters:**
+
+- `projectId`: UUID of the project
+
+**Request Body:** None
+
+**Response:**
+
+```json
+{
+  "tasks": [
+    {
+      "id": "uuid",
+      "title": "Phase 1 - Foundation",
+      "description": "Foundation work",
+      "deadline": "timestamp",
+      "weight": 30,
+      "parentId": null,
+      "isLeaf": false,
+      "claimedPercentage": 50,
+      "actualPercentage": 45,
+      "isCompleted": false,
+      "children": [
+        {
+          "id": "uuid",
+          "title": "Excavation",
+          "weight": 15,
+          "isLeaf": true,
+          "claimedPercentage": 100,
+          "actualPercentage": 100,
+          "isCompleted": true,
+          "children": null
+        }
+      ]
+    }
+  ],
+  "totalWeight": 100
+}
+```
+
+**Success Code:** `SUCCESS_GET_TASKS`
 
 ---
 
-### Story 3: Validate Progress
+### 3. Get Leaf Tasks
 
-**As an** INDEPENDENT_AUDITOR,
-**I want to** review the contractor's claim and decide the "Real Percentage",
-**So that** only valid data enters the official S-Curve calculation.
+**Endpoint:** `GET /monitoring/project/{projectId}/task/leaf`
 
-#### Acceptance Criteria
+**Description:** Mendapatkan hanya leaf tasks (task tanpa children) untuk dropdown submit progress.
 
-1.  **Review Interface:**
-    - Auditor melihat detail klaim: Foto Bukti, Deskripsi, dan Angka % Klaim Kontraktor.
-2.  **Action: APPROVE:**
-    - Auditor setuju dengan klaim.
-    - Input `is_accepted = true`.
-    - Input `real_progress_percentage`. (Biasanya sama dengan klaim kontraktor, tapi Auditor berhak mengoreksi, misal Kontraktor klaim 50%, Auditor hanya mengakui 45%).
-3.  **Action: REJECT:**
-    - Auditor menolak klaim (misal foto tidak sesuai/buram).
-    - Input `is_accepted = false`.
-    - Wajib mengisi `comment` (Alasan penolakan).
-    - Data ini **tidak akan dihitung** dalam rumus Kurva S "Actual Progress".
-4.  **Single Source of Truth:**
-    - Satu `progress_log` hanya boleh memiliki satu `progress_validation` (Constraint `UNIQUE`).
+**Authentication:** ✅ Bearer Token (Access Token)
 
-#### Technical Notes & Schema Mapping
+**Authorization:** Any project participant
 
-- **Endpoint:** `POST /monitoring/log/{id}/validate`
-- **Table:** `progress_validations`
-  - `progress_log_id` (UUID) -> _Foreign Key Unique_
-  - `is_accepted` (BOOLEAN)
-  - `real_progress_percentage` (INT) -> _Angka Final untuk S-Curve_
-  - `comment` (TEXT)
-  - `auditor_id` (UUID) -> _Siapa yang memvalidasi_
+**URL Parameters:**
+
+- `projectId`: UUID of the project
+
+**Response:**
+
+```json
+{
+  "tasks": [
+    {
+      "id": "uuid",
+      "title": "Excavation",
+      "weight": 15,
+      "isLeaf": true,
+      "claimedPercentage": 50,
+      "actualPercentage": 45
+    }
+  ],
+  "totalWeight": 100
+}
+```
+
+**Use Case:** Digunakan oleh CONTRACTOR untuk memilih task saat submit progress.
+
+**Success Code:** `SUCCESS_GET_LEAF_TASKS`
+
+---
+
+### 4. Update Task
+
+**Endpoint:** `PUT /monitoring/task/{taskId}`
+
+**Description:** Mengupdate task item.
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Authorization:**
+
+- **Required:** User harus ADMIN dari EXECUTING_AGENCY
+
+**URL Parameters:**
+
+- `taskId`: UUID of the task
+
+**Request Body:**
+
+```json
+{
+  "title": "string (required)",
+  "description": "string (required)",
+  "deadline": "timestamp (required)",
+  "weight": 15,
+  "parentId": "uuid | null"
+}
+```
+
+**Response:** Updated TaskReturn object
+
+**Error Codes:**
+
+- `TASK_NOT_FOUND` - Task tidak ditemukan
+- `EXECUTING_AGENCY_ADMIN_REQUIRED` - Bukan ADMIN dari EXECUTING_AGENCY
+
+**Success Code:** `SUCCESS_UPDATE_TASK`
+
+---
+
+### 5. Delete Task
+
+**Endpoint:** `DELETE /monitoring/task/{taskId}`
+
+**Description:** Menghapus task item (soft delete).
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Authorization:**
+
+- **Required:** User harus ADMIN dari EXECUTING_AGENCY
+
+**URL Parameters:**
+
+- `taskId`: UUID of the task
+
+**Request Body:** None
+
+**Response:** `null`
+
+**Error Codes:**
+
+- `TASK_NOT_FOUND` - Task tidak ditemukan
+- `TASK_HAS_CHILDREN` - Task memiliki sub-task
+- `TASK_HAS_LOGS` - Task sudah memiliki progress logs
+
+**Success Code:** `SUCCESS_DELETE_TASK`
+
+---
+
+## Progress Log Routes
+
+### 6. Submit Progress
+
+**Endpoint:** `POST /monitoring/task/{taskId}/log`
+
+**Description:** Kontraktor melaporkan progress pekerjaan dengan bukti foto.
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Authorization:**
+
+- **Required:** User harus dari CONTRACTOR organization yang terdaftar di project
+
+**URL Parameters:**
+
+- `taskId`: UUID of the task (must be leaf task)
+
+**Request Body:**
+
+```json
+{
+  "progressPercentage": 75,
+  "report": "string (required, description of work done)",
+  "evidenceImageUrls": ["url1", "url2", "..."]
+}
+```
+
+> Note: Minimal 1 evidence image URL required
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "report": "Completed excavation work...",
+  "progressPercentage": 75,
+  "evidenceImageUrls": ["https://cloudinary.com/..."],
+  "snapshotTitle": "Excavation",
+  "snapshotDescription": "Excavation work for foundation",
+  "snapshotWeight": 15,
+  "taskItemId": "uuid",
+  "vendorId": "uuid",
+  "validation": null,
+  "createdAt": "timestamp"
+}
+```
+
+**Flow:**
+
+1. Validasi user adalah CONTRACTOR
+2. Validasi task adalah leaf node
+3. **Snapshot:** Copy title, description, weight dari task_items
+4. Simpan progress log dengan status pending (validation = null)
+
+**Error Codes:**
+
+- `CONTRACTOR_REQUIRED` - User bukan dari CONTRACTOR org
+- `TASK_NOT_FOUND` - Task tidak ditemukan
+- `NOT_LEAF_TASK` - Task bukan leaf node
+
+**Success Code:** `SUCCESS_SUBMIT_PROGRESS`
+
+---
+
+### 7. Get Progress Logs
+
+**Endpoint:** `GET /monitoring/project/{projectId}/log`
+
+**Description:** Mendapatkan semua progress logs untuk project.
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Authorization:** Any project participant
+
+**URL Parameters:**
+
+- `projectId`: UUID of the project
+
+**Response:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "report": "Completed excavation...",
+    "progressPercentage": 75,
+    "evidenceImageUrls": ["url1", "url2"],
+    "snapshotTitle": "Excavation",
+    "snapshotWeight": 15,
+    "taskItemId": "uuid",
+    "taskTitle": "Excavation",
+    "vendorId": "uuid",
+    "vendorName": "PT Konstruksi ABC",
+    "validation": {
+      "id": "uuid",
+      "isAccepted": true,
+      "claimedPercentage": 75,
+      "realProgressPercentage": 70,
+      "comment": null,
+      "auditorId": "uuid",
+      "createdAt": "timestamp"
+    },
+    "createdAt": "timestamp"
+  }
+]
+```
+
+**Success Code:** `SUCCESS_GET_PROGRESS_LOGS`
+
+---
+
+### 8. Get Pending Validations
+
+**Endpoint:** `GET /monitoring/project/{projectId}/log/pending`
+
+**Description:** Mendapatkan progress logs yang belum divalidasi (untuk auditor queue).
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Authorization:**
+
+- **Required:** User harus dari INDEPENDENT_AUDITOR organization
+
+**URL Parameters:**
+
+- `projectId`: UUID of the project
+
+**Response:** Array of ProgressLogReturn dengan `validation: null`
+
+**Use Case:** Digunakan oleh AUDITOR untuk melihat antrian validasi.
+
+**Error Codes:**
+
+- `AUDITOR_REQUIRED` - User bukan dari INDEPENDENT_AUDITOR org
+
+**Success Code:** `SUCCESS_GET_PENDING_VALIDATIONS`
+
+---
+
+## Validation Routes
+
+### 9. Validate Progress
+
+**Endpoint:** `POST /monitoring/log/{logId}/validate`
+
+**Description:** Auditor melakukan validasi terhadap klaim progress kontraktor.
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Authorization:**
+
+- **Required:** User harus dari INDEPENDENT_AUDITOR organization yang terdaftar di project
+
+**URL Parameters:**
+
+- `logId`: UUID of the progress log
+
+**Request Body:**
+
+```json
+{
+  "realProgressPercentage": 70,
+  "comment": "string | null (required if rejecting)"
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "isAccepted": true,
+  "claimedPercentage": 75,
+  "realProgressPercentage": 70,
+  "comment": null,
+  "auditorId": "uuid",
+  "createdAt": "timestamp"
+}
+```
+
+**Flow:**
+
+1. Validasi user adalah INDEPENDENT_AUDITOR
+2. Validasi log belum divalidasi (unique constraint)
+3. Jika realProgressPercentage > 0: is_accepted = true
+4. Jika realProgressPercentage = 0: is_accepted = false, comment required
+5. Simpan validation record
+6. Data ini akan dihitung dalam S-Curve jika accepted
+
+**Error Codes:**
+
+- `AUDITOR_REQUIRED` - User bukan dari INDEPENDENT_AUDITOR org
+- `PROGRESS_LOG_NOT_FOUND` - Log tidak ditemukan
+- `ALREADY_VALIDATED` - Log sudah divalidasi
+- `COMMENT_REQUIRED` - Comment wajib untuk rejection
+
+**Success Code:** `SUCCESS_VALIDATE_PROGRESS`
+
+---
+
+## S-Curve Routes
+
+### 10. Get S-Curve Data
+
+**Endpoint:** `GET /monitoring/project/{projectId}/scurve`
+
+**Description:** Mendapatkan data untuk kalkulasi S-Curve.
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Authorization:** Any project participant
+
+**URL Parameters:**
+
+- `projectId`: UUID of the project
+
+**Response:**
+
+```json
+{
+  "actualProgress": 45.5,
+  "plannedProgress": 60.0,
+  "totalSnapshotWeight": 100,
+  "totalLogs": 15,
+  "approvedLogs": 12,
+  "rejectedLogs": 3,
+  "taskDetails": [
+    {
+      "taskId": "uuid",
+      "taskTitle": "Excavation",
+      "plannedWeight": 15,
+      "deadline": "timestamp",
+      "actualPercentage": 100,
+      "claimedPercentage": 100
+    }
+  ]
+}
+```
+
+**Calculation:**
+
+- **Planned Progress:** Sum of weights of tasks whose deadline has passed
+- **Actual Progress:** Sum of (snapshot_weight × real_progress_percentage / 100) for accepted validations
+
+**Success Code:** `SUCCESS_GET_SCURVE`
+
+---
+
+## Summary Table
+
+| #   | Endpoint                                      | Method | Auth | Authorization          | Description             |
+| --- | --------------------------------------------- | ------ | ---- | ---------------------- | ----------------------- |
+| 1   | `/monitoring/project/{projectId}/task`        | POST   | ✅   | EXECUTING_AGENCY ADMIN | Create task             |
+| 2   | `/monitoring/project/{projectId}/task`        | GET    | ✅   | Project participant    | Get tasks (tree)        |
+| 3   | `/monitoring/project/{projectId}/task/leaf`   | GET    | ✅   | Project participant    | Get leaf tasks          |
+| 4   | `/monitoring/task/{taskId}`                   | PUT    | ✅   | EXECUTING_AGENCY ADMIN | Update task             |
+| 5   | `/monitoring/task/{taskId}`                   | DELETE | ✅   | EXECUTING_AGENCY ADMIN | Delete task             |
+| 6   | `/monitoring/task/{taskId}/log`               | POST   | ✅   | CONTRACTOR             | Submit progress         |
+| 7   | `/monitoring/project/{projectId}/log`         | GET    | ✅   | Project participant    | Get logs                |
+| 8   | `/monitoring/project/{projectId}/log/pending` | GET    | ✅   | INDEPENDENT_AUDITOR    | Get pending validations |
+| 9   | `/monitoring/log/{logId}/validate`            | POST   | ✅   | INDEPENDENT_AUDITOR    | Validate progress       |
+| 10  | `/monitoring/project/{projectId}/scurve`      | GET    | ✅   | Project participant    | Get S-Curve data        |
+
+---
+
+## Progress Flow
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                    PROGRESS REPORTING FLOW                            │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  1. EXECUTING_AGENCY creates WBS (task hierarchy)                    │
+│     ↓                                                                │
+│  2. CONTRACTOR submits progress on leaf tasks with photos            │
+│     ↓                                                                │
+│  3. AUDITOR reviews pending validations                              │
+│     ↓                                                                │
+│  4a. APPROVE: Set real_progress_percentage → Data masuk S-Curve      │
+│  4b. REJECT: Set comment → Data tidak dihitung                       │
+│     ↓                                                                │
+│  5. S-Curve calculates actual vs planned progress                    │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
