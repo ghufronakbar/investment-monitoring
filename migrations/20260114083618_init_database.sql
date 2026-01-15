@@ -46,7 +46,6 @@ CREATE TYPE ticket_log_action_enum AS ENUM (
 );
 
 CREATE TYPE payment_request_status_enum AS ENUM (
-    'DRAFT',
     'SUBMITTED',
     'AUDITOR_APPROVED',
     'AUDITOR_REJECTED',
