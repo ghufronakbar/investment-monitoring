@@ -28,6 +28,10 @@ import (
 	tracker_controller "investment_monitoring/internal/module/tracker/controller"
 	tracker_service "investment_monitoring/internal/module/tracker/service"
 
+	// Finance module
+	finance_controller "investment_monitoring/internal/module/finance/controller"
+	finance_service "investment_monitoring/internal/module/finance/service"
+
 	// Support services
 	mail_service "investment_monitoring/internal/module/support/mail/service"
 	token_service "investment_monitoring/internal/module/support/token/service"
@@ -63,6 +67,9 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	// Tracker services
 	trackerSvc := tracker_service.NewService(db, cfg)
 
+	// Finance services
+	financeSvc := finance_service.NewService(db, cfg)
+
 	// 2. =========== INITIAL HANDLER ===========
 	subexampleHandler := subexample_controller.NewHandler(subexampleSvc)
 	authHandler := auth_controller.NewHandler(authSvc)
@@ -70,6 +77,7 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	projectHandler := project_controller.NewHandler(projectSvc, db)
 	monitoringHandler := monitoring_controller.NewHandler(monitoringSvc, db)
 	trackerHandler := tracker_controller.NewHandler(trackerSvc, db)
+	financeHandler := finance_controller.NewHandler(financeSvc, db)
 
 	// 3. =========== MANAGE ROUTING ===========
 	r := chi.NewRouter()
@@ -114,6 +122,12 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	r.Route("/tracker", func(r chi.Router) {
 		r.Use(authMiddleware)
 		r.Mount("/", trackerHandler.Routes())
+	})
+
+	// Finance routes (protected)
+	r.Route("/finance", func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Mount("/", financeHandler.Routes())
 	})
 
 	return r

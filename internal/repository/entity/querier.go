@@ -13,6 +13,8 @@ import (
 type Querier interface {
 	// ===== GOV PARTICIPANTS QUERIES =====
 	AddGovParticipant(ctx context.Context, arg AddGovParticipantParams) (GovParticipant, error)
+	ApproveByAgency(ctx context.Context, arg ApproveByAgencyParams) (PaymentRequest, error)
+	ApproveByAuditor(ctx context.Context, arg ApproveByAuditorParams) (PaymentRequest, error)
 	AssignAuditor(ctx context.Context, arg AssignAuditorParams) (Contract, error)
 	AssignExecutingAgency(ctx context.Context, arg AssignExecutingAgencyParams) (Contract, error)
 	AssignTicket(ctx context.Context, arg AssignTicketParams) (Ticket, error)
@@ -37,6 +39,11 @@ type Querier interface {
 	// ===== ORGANIZATION MEMBER QUERIES =====
 	// Link user to organization with specific role
 	CreateOrganizationMember(ctx context.Context, arg CreateOrganizationMemberParams) (OrganizationMember, error)
+	// internal/repository/queries/finance.sql
+	// SQLC queries for FINANCE module (Disbursement/Payment Requests)
+	// Tiered Approval Flow: SUBMITTED -> AUDITOR -> AGENCY -> PAID
+	// ===== PAYMENT REQUESTS QUERIES =====
+	CreatePaymentRequest(ctx context.Context, arg CreatePaymentRequestParams) (PaymentRequest, error)
 	// ===== PROGRESS LOGS QUERIES =====
 	// CRITICAL: Use INSERT...SELECT to atomically snapshot task data
 	CreateProgressLog(ctx context.Context, arg CreateProgressLogParams) (ProgressLog, error)
@@ -63,6 +70,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) error
 	DeleteTask(ctx context.Context, id uuid.UUID) error
+	DisburseByLoanProvider(ctx context.Context, arg DisburseByLoanProviderParams) (PaymentRequest, error)
 	GetAllProgressLogsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetAllProgressLogsByContractIDRow, error)
 	GetChildTasks(ctx context.Context, parentID uuid.NullUUID) ([]TaskItem, error)
 	// Filter CLOSED tickets only
@@ -70,6 +78,8 @@ type Querier interface {
 	GetContractByID(ctx context.Context, id uuid.UUID) (Contract, error)
 	GetContractByProjectID(ctx context.Context, projectID uuid.UUID) (Contract, error)
 	GetContractWithDetails(ctx context.Context, projectID uuid.UUID) (GetContractWithDetailsRow, error)
+	// Get contract with project settings for currency
+	GetContractWithProjectSettings(ctx context.Context, id uuid.UUID) (GetContractWithProjectSettingsRow, error)
 	GetExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
 	GetGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetGovParticipantsByContractIDRow, error)
 	GetLatestTicketStatus(ctx context.Context, ticketID uuid.UUID) (TicketStatusEnum, error)
@@ -84,6 +94,16 @@ type Querier interface {
 	GetOrganizationMember(ctx context.Context, arg GetOrganizationMemberParams) (GetOrganizationMemberRow, error)
 	// Get all members of an organization
 	GetOrganizationMembers(ctx context.Context, organizationID uuid.UUID) ([]GetOrganizationMembersRow, error)
+	// Sum of PAID payment requests
+	GetPaidAmountByContractID(ctx context.Context, contractID uuid.UUID) (int64, error)
+	GetPaymentRequestByID(ctx context.Context, id uuid.UUID) (GetPaymentRequestByIDRow, error)
+	// For access control and participant validation
+	GetPaymentRequestWithContract(ctx context.Context, id uuid.UUID) (GetPaymentRequestWithContractRow, error)
+	GetPaymentRequestsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetPaymentRequestsByContractIDRow, error)
+	// Sum of in-progress payment requests (not PAID, not REJECTED)
+	GetPendingAmountByContractID(ctx context.Context, contractID uuid.UUID) (int64, error)
+	// Get payment requests that are in-progress (not PAID, not REJECTED)
+	GetPendingPaymentRequestsByContractID(ctx context.Context, contractID uuid.UUID) ([]PaymentRequest, error)
 	// Logs that don't have a validation entry yet
 	GetPendingValidationLogs(ctx context.Context, contractID uuid.UUID) ([]GetPendingValidationLogsRow, error)
 	GetProgressLogByID(ctx context.Context, id uuid.UUID) (ProgressLog, error)
@@ -122,6 +142,8 @@ type Querier interface {
 	// Check if user's organization has access to a project via contract
 	GetUserProjectAccess(ctx context.Context, arg GetUserProjectAccessParams) (GetUserProjectAccessRow, error)
 	GetValidationByProgressLogID(ctx context.Context, progressLogID uuid.UUID) (ProgressValidation, error)
+	// Check if there's any pending payment request
+	HasPendingPaymentRequest(ctx context.Context, contractID uuid.UUID) (bool, error)
 	// List all organizations with pagination
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
 	ListProjects(ctx context.Context) ([]Project, error)

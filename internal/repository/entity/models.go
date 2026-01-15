@@ -313,6 +313,7 @@ type PaymentRequest struct {
 	CreatedAt             time.Time                `json:"created_at"`
 	UpdatedAt             time.Time                `json:"updated_at"`
 	DeletedAt             sql.NullTime             `json:"deleted_at"`
+	PaymentProofImageUrls []string                 `json:"payment_proof_image_urls"`
 }
 
 type ProgressLog struct {
