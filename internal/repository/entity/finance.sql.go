@@ -21,7 +21,7 @@ UPDATE payment_requests SET
     executing_agency_user_id = $4,
     executing_agency_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, title, amount, status, invoice_file_url, contract_id, auditor_org_id, auditor_user_id, auditor_at, executing_agency_org_id, executing_agency_user_id, executing_agency_at, loan_provider_org_id, loan_provider_user_id, loan_provider_at, created_at, updated_at, deleted_at, payment_proof_image_urls
+RETURNING id, title, amount, status, invoice_file_url, contract_id, auditor_org_id, auditor_user_id, auditor_at, executing_agency_org_id, executing_agency_user_id, executing_agency_at, loan_provider_org_id, loan_provider_user_id, loan_provider_at, payment_proof_image_urls, created_at, updated_at, deleted_at
 `
 
 type ApproveByAgencyParams struct {
@@ -55,10 +55,10 @@ func (q *Queries) ApproveByAgency(ctx context.Context, arg ApproveByAgencyParams
 		&i.LoanProviderOrgID,
 		&i.LoanProviderUserID,
 		&i.LoanProviderAt,
+		pq.Array(&i.PaymentProofImageUrls),
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		pq.Array(&i.PaymentProofImageUrls),
 	)
 	return i, err
 }
@@ -70,7 +70,7 @@ UPDATE payment_requests SET
     auditor_user_id = $4,
     auditor_at = NOW()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, title, amount, status, invoice_file_url, contract_id, auditor_org_id, auditor_user_id, auditor_at, executing_agency_org_id, executing_agency_user_id, executing_agency_at, loan_provider_org_id, loan_provider_user_id, loan_provider_at, created_at, updated_at, deleted_at, payment_proof_image_urls
+RETURNING id, title, amount, status, invoice_file_url, contract_id, auditor_org_id, auditor_user_id, auditor_at, executing_agency_org_id, executing_agency_user_id, executing_agency_at, loan_provider_org_id, loan_provider_user_id, loan_provider_at, payment_proof_image_urls, created_at, updated_at, deleted_at
 `
 
 type ApproveByAuditorParams struct {
@@ -104,10 +104,10 @@ func (q *Queries) ApproveByAuditor(ctx context.Context, arg ApproveByAuditorPara
 		&i.LoanProviderOrgID,
 		&i.LoanProviderUserID,
 		&i.LoanProviderAt,
+		pq.Array(&i.PaymentProofImageUrls),
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		pq.Array(&i.PaymentProofImageUrls),
 	)
 	return i, err
 }
@@ -119,7 +119,7 @@ INSERT INTO payment_requests (
     title, amount, status, invoice_file_url, contract_id
 )
 VALUES ($1, $2, 'SUBMITTED', $3, $4)
-RETURNING id, title, amount, status, invoice_file_url, contract_id, auditor_org_id, auditor_user_id, auditor_at, executing_agency_org_id, executing_agency_user_id, executing_agency_at, loan_provider_org_id, loan_provider_user_id, loan_provider_at, created_at, updated_at, deleted_at, payment_proof_image_urls
+RETURNING id, title, amount, status, invoice_file_url, contract_id, auditor_org_id, auditor_user_id, auditor_at, executing_agency_org_id, executing_agency_user_id, executing_agency_at, loan_provider_org_id, loan_provider_user_id, loan_provider_at, payment_proof_image_urls, created_at, updated_at, deleted_at
 `
 
 type CreatePaymentRequestParams struct {
@@ -157,10 +157,10 @@ func (q *Queries) CreatePaymentRequest(ctx context.Context, arg CreatePaymentReq
 		&i.LoanProviderOrgID,
 		&i.LoanProviderUserID,
 		&i.LoanProviderAt,
+		pq.Array(&i.PaymentProofImageUrls),
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		pq.Array(&i.PaymentProofImageUrls),
 	)
 	return i, err
 }
@@ -173,7 +173,7 @@ UPDATE payment_requests SET
     loan_provider_at = NOW(),
     payment_proof_image_urls = $4
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, title, amount, status, invoice_file_url, contract_id, auditor_org_id, auditor_user_id, auditor_at, executing_agency_org_id, executing_agency_user_id, executing_agency_at, loan_provider_org_id, loan_provider_user_id, loan_provider_at, created_at, updated_at, deleted_at, payment_proof_image_urls
+RETURNING id, title, amount, status, invoice_file_url, contract_id, auditor_org_id, auditor_user_id, auditor_at, executing_agency_org_id, executing_agency_user_id, executing_agency_at, loan_provider_org_id, loan_provider_user_id, loan_provider_at, payment_proof_image_urls, created_at, updated_at, deleted_at
 `
 
 type DisburseByLoanProviderParams struct {
@@ -207,10 +207,10 @@ func (q *Queries) DisburseByLoanProvider(ctx context.Context, arg DisburseByLoan
 		&i.LoanProviderOrgID,
 		&i.LoanProviderUserID,
 		&i.LoanProviderAt,
+		pq.Array(&i.PaymentProofImageUrls),
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		pq.Array(&i.PaymentProofImageUrls),
 	)
 	return i, err
 }
@@ -283,7 +283,7 @@ func (q *Queries) GetPaidAmountByContractID(ctx context.Context, contractID uuid
 
 const getPaymentRequestByID = `-- name: GetPaymentRequestByID :one
 SELECT 
-    pr.id, pr.title, pr.amount, pr.status, pr.invoice_file_url, pr.contract_id, pr.auditor_org_id, pr.auditor_user_id, pr.auditor_at, pr.executing_agency_org_id, pr.executing_agency_user_id, pr.executing_agency_at, pr.loan_provider_org_id, pr.loan_provider_user_id, pr.loan_provider_at, pr.created_at, pr.updated_at, pr.deleted_at, pr.payment_proof_image_urls,
+    pr.id, pr.title, pr.amount, pr.status, pr.invoice_file_url, pr.contract_id, pr.auditor_org_id, pr.auditor_user_id, pr.auditor_at, pr.executing_agency_org_id, pr.executing_agency_user_id, pr.executing_agency_at, pr.loan_provider_org_id, pr.loan_provider_user_id, pr.loan_provider_at, pr.payment_proof_image_urls, pr.created_at, pr.updated_at, pr.deleted_at,
     o_auditor.name as auditor_org_name,
     o_agency.name as agency_org_name,
     o_loan.name as loan_provider_org_name
@@ -310,10 +310,10 @@ type GetPaymentRequestByIDRow struct {
 	LoanProviderOrgID     uuid.NullUUID            `json:"loan_provider_org_id"`
 	LoanProviderUserID    uuid.NullUUID            `json:"loan_provider_user_id"`
 	LoanProviderAt        sql.NullTime             `json:"loan_provider_at"`
+	PaymentProofImageUrls []string                 `json:"payment_proof_image_urls"`
 	CreatedAt             time.Time                `json:"created_at"`
 	UpdatedAt             time.Time                `json:"updated_at"`
 	DeletedAt             sql.NullTime             `json:"deleted_at"`
-	PaymentProofImageUrls []string                 `json:"payment_proof_image_urls"`
 	AuditorOrgName        sql.NullString           `json:"auditor_org_name"`
 	AgencyOrgName         sql.NullString           `json:"agency_org_name"`
 	LoanProviderOrgName   sql.NullString           `json:"loan_provider_org_name"`
@@ -338,10 +338,10 @@ func (q *Queries) GetPaymentRequestByID(ctx context.Context, id uuid.UUID) (GetP
 		&i.LoanProviderOrgID,
 		&i.LoanProviderUserID,
 		&i.LoanProviderAt,
+		pq.Array(&i.PaymentProofImageUrls),
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		pq.Array(&i.PaymentProofImageUrls),
 		&i.AuditorOrgName,
 		&i.AgencyOrgName,
 		&i.LoanProviderOrgName,
@@ -350,7 +350,7 @@ func (q *Queries) GetPaymentRequestByID(ctx context.Context, id uuid.UUID) (GetP
 }
 
 const getPaymentRequestWithContract = `-- name: GetPaymentRequestWithContract :one
-SELECT pr.id, pr.title, pr.amount, pr.status, pr.invoice_file_url, pr.contract_id, pr.auditor_org_id, pr.auditor_user_id, pr.auditor_at, pr.executing_agency_org_id, pr.executing_agency_user_id, pr.executing_agency_at, pr.loan_provider_org_id, pr.loan_provider_user_id, pr.loan_provider_at, pr.created_at, pr.updated_at, pr.deleted_at, pr.payment_proof_image_urls, c.id as contract_id, c.project_id,
+SELECT pr.id, pr.title, pr.amount, pr.status, pr.invoice_file_url, pr.contract_id, pr.auditor_org_id, pr.auditor_user_id, pr.auditor_at, pr.executing_agency_org_id, pr.executing_agency_user_id, pr.executing_agency_at, pr.loan_provider_org_id, pr.loan_provider_user_id, pr.loan_provider_at, pr.payment_proof_image_urls, pr.created_at, pr.updated_at, pr.deleted_at, c.id as contract_id, c.project_id,
        c.auditor_participant_id, c.executing_agency_participant_id,
        c.contract_value
 FROM payment_requests pr
@@ -374,10 +374,10 @@ type GetPaymentRequestWithContractRow struct {
 	LoanProviderOrgID            uuid.NullUUID            `json:"loan_provider_org_id"`
 	LoanProviderUserID           uuid.NullUUID            `json:"loan_provider_user_id"`
 	LoanProviderAt               sql.NullTime             `json:"loan_provider_at"`
+	PaymentProofImageUrls        []string                 `json:"payment_proof_image_urls"`
 	CreatedAt                    time.Time                `json:"created_at"`
 	UpdatedAt                    time.Time                `json:"updated_at"`
 	DeletedAt                    sql.NullTime             `json:"deleted_at"`
-	PaymentProofImageUrls        []string                 `json:"payment_proof_image_urls"`
 	ContractID_2                 uuid.UUID                `json:"contract_id_2"`
 	ProjectID                    uuid.UUID                `json:"project_id"`
 	AuditorParticipantID         uuid.NullUUID            `json:"auditor_participant_id"`
@@ -405,10 +405,10 @@ func (q *Queries) GetPaymentRequestWithContract(ctx context.Context, id uuid.UUI
 		&i.LoanProviderOrgID,
 		&i.LoanProviderUserID,
 		&i.LoanProviderAt,
+		pq.Array(&i.PaymentProofImageUrls),
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		pq.Array(&i.PaymentProofImageUrls),
 		&i.ContractID_2,
 		&i.ProjectID,
 		&i.AuditorParticipantID,
@@ -420,7 +420,7 @@ func (q *Queries) GetPaymentRequestWithContract(ctx context.Context, id uuid.UUI
 
 const getPaymentRequestsByContractID = `-- name: GetPaymentRequestsByContractID :many
 SELECT 
-    pr.id, pr.title, pr.amount, pr.status, pr.invoice_file_url, pr.contract_id, pr.auditor_org_id, pr.auditor_user_id, pr.auditor_at, pr.executing_agency_org_id, pr.executing_agency_user_id, pr.executing_agency_at, pr.loan_provider_org_id, pr.loan_provider_user_id, pr.loan_provider_at, pr.created_at, pr.updated_at, pr.deleted_at, pr.payment_proof_image_urls,
+    pr.id, pr.title, pr.amount, pr.status, pr.invoice_file_url, pr.contract_id, pr.auditor_org_id, pr.auditor_user_id, pr.auditor_at, pr.executing_agency_org_id, pr.executing_agency_user_id, pr.executing_agency_at, pr.loan_provider_org_id, pr.loan_provider_user_id, pr.loan_provider_at, pr.payment_proof_image_urls, pr.created_at, pr.updated_at, pr.deleted_at,
     o_auditor.name as auditor_org_name,
     o_agency.name as agency_org_name,
     o_loan.name as loan_provider_org_name
@@ -448,10 +448,10 @@ type GetPaymentRequestsByContractIDRow struct {
 	LoanProviderOrgID     uuid.NullUUID            `json:"loan_provider_org_id"`
 	LoanProviderUserID    uuid.NullUUID            `json:"loan_provider_user_id"`
 	LoanProviderAt        sql.NullTime             `json:"loan_provider_at"`
+	PaymentProofImageUrls []string                 `json:"payment_proof_image_urls"`
 	CreatedAt             time.Time                `json:"created_at"`
 	UpdatedAt             time.Time                `json:"updated_at"`
 	DeletedAt             sql.NullTime             `json:"deleted_at"`
-	PaymentProofImageUrls []string                 `json:"payment_proof_image_urls"`
 	AuditorOrgName        sql.NullString           `json:"auditor_org_name"`
 	AgencyOrgName         sql.NullString           `json:"agency_org_name"`
 	LoanProviderOrgName   sql.NullString           `json:"loan_provider_org_name"`
@@ -482,10 +482,10 @@ func (q *Queries) GetPaymentRequestsByContractID(ctx context.Context, contractID
 			&i.LoanProviderOrgID,
 			&i.LoanProviderUserID,
 			&i.LoanProviderAt,
+			pq.Array(&i.PaymentProofImageUrls),
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
-			pq.Array(&i.PaymentProofImageUrls),
 			&i.AuditorOrgName,
 			&i.AgencyOrgName,
 			&i.LoanProviderOrgName,
@@ -520,7 +520,7 @@ func (q *Queries) GetPendingAmountByContractID(ctx context.Context, contractID u
 }
 
 const getPendingPaymentRequestsByContractID = `-- name: GetPendingPaymentRequestsByContractID :many
-SELECT pr.id, pr.title, pr.amount, pr.status, pr.invoice_file_url, pr.contract_id, pr.auditor_org_id, pr.auditor_user_id, pr.auditor_at, pr.executing_agency_org_id, pr.executing_agency_user_id, pr.executing_agency_at, pr.loan_provider_org_id, pr.loan_provider_user_id, pr.loan_provider_at, pr.created_at, pr.updated_at, pr.deleted_at, pr.payment_proof_image_urls FROM payment_requests pr
+SELECT pr.id, pr.title, pr.amount, pr.status, pr.invoice_file_url, pr.contract_id, pr.auditor_org_id, pr.auditor_user_id, pr.auditor_at, pr.executing_agency_org_id, pr.executing_agency_user_id, pr.executing_agency_at, pr.loan_provider_org_id, pr.loan_provider_user_id, pr.loan_provider_at, pr.payment_proof_image_urls, pr.created_at, pr.updated_at, pr.deleted_at FROM payment_requests pr
 WHERE pr.contract_id = $1 
   AND pr.deleted_at IS NULL
   AND pr.status NOT IN ('PAID', 'AUDITOR_REJECTED', 'AGENCY_REJECTED')
@@ -552,10 +552,10 @@ func (q *Queries) GetPendingPaymentRequestsByContractID(ctx context.Context, con
 			&i.LoanProviderOrgID,
 			&i.LoanProviderUserID,
 			&i.LoanProviderAt,
+			pq.Array(&i.PaymentProofImageUrls),
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
-			pq.Array(&i.PaymentProofImageUrls),
 		); err != nil {
 			return nil, err
 		}

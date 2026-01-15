@@ -71,6 +71,8 @@ type Querier interface {
 	DeleteGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) error
 	DeleteTask(ctx context.Context, id uuid.UUID) error
 	DisburseByLoanProvider(ctx context.Context, arg DisburseByLoanProviderParams) (PaymentRequest, error)
+	// Get progress data with validations for actual calculation
+	GetAcceptedProgressData(ctx context.Context, projectID uuid.UUID) ([]GetAcceptedProgressDataRow, error)
 	GetAllProgressLogsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetAllProgressLogsByContractIDRow, error)
 	GetChildTasks(ctx context.Context, parentID uuid.NullUUID) ([]TaskItem, error)
 	// Filter CLOSED tickets only
@@ -80,6 +82,8 @@ type Querier interface {
 	GetContractWithDetails(ctx context.Context, projectID uuid.UUID) (GetContractWithDetailsRow, error)
 	// Get contract with project settings for currency
 	GetContractWithProjectSettings(ctx context.Context, id uuid.UUID) (GetContractWithProjectSettingsRow, error)
+	// ===== STATS DATA =====
+	GetDisbursedAmountByProjectID(ctx context.Context, projectID uuid.UUID) (int64, error)
 	GetExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
 	GetGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetGovParticipantsByContractIDRow, error)
 	GetLatestTicketStatus(ctx context.Context, ticketID uuid.UUID) (TicketStatusEnum, error)
@@ -111,6 +115,10 @@ type Querier interface {
 	GetProgressLogsByTaskID(ctx context.Context, taskItemID uuid.UUID) ([]GetProgressLogsByTaskIDRow, error)
 	GetProjectByID(ctx context.Context, id uuid.UUID) (Project, error)
 	GetProjectSettingsByProjectID(ctx context.Context, projectID uuid.UUID) (ProjectSetting, error)
+	// internal/repository/queries/dashboard.sql
+	// SQLC queries for DASHBOARD module (S-Curve, Stats)
+	// ===== PROJECT SETTINGS =====
+	GetProjectSettingsForDashboard(ctx context.Context, projectID uuid.UUID) (GetProjectSettingsForDashboardRow, error)
 	GetRootTasksByContractID(ctx context.Context, contractID uuid.UUID) ([]TaskItem, error)
 	// ===== S-CURVE DATA QUERIES =====
 	// Aggregate actual progress based on validated logs
@@ -118,10 +126,15 @@ type Querier interface {
 	// Per-task progress for detailed S-Curve
 	GetSCurveDataByTask(ctx context.Context, contractID uuid.UUID) ([]GetSCurveDataByTaskRow, error)
 	GetTaskByID(ctx context.Context, id uuid.UUID) (TaskItem, error)
+	// ===== S-CURVE DATA =====
+	// Get all leaf task items with their deadlines and weights for plan calculation
+	GetTaskItemsWithDeadlines(ctx context.Context, projectID uuid.UUID) ([]GetTaskItemsWithDeadlinesRow, error)
 	GetTaskWithParent(ctx context.Context, id uuid.UUID) (GetTaskWithParentRow, error)
 	GetTasksByContractID(ctx context.Context, contractID uuid.UUID) ([]TaskItem, error)
 	GetTicketByID(ctx context.Context, id uuid.UUID) (GetTicketByIDRow, error)
 	GetTicketLogsByTicketID(ctx context.Context, ticketID uuid.UUID) ([]GetTicketLogsByTicketIDRow, error)
+	// Count tickets by status for a project
+	GetTicketStatsByProjectID(ctx context.Context, projectID uuid.UUID) (GetTicketStatsByProjectIDRow, error)
 	// For access control - get ticket with contract info
 	GetTicketWithContract(ctx context.Context, id uuid.UUID) (GetTicketWithContractRow, error)
 	// Uses DISTINCT ON to avoid N+1 query for current_status

@@ -17,16 +17,22 @@ Fungsi pendukung visualisasi data (Dashboard) dan manajemen file (Utility). Modu
 1.  **Validation:**
     - **Format:** Hanya perbolehkan `JPG`, `JPEG`, `PNG`, `PDF`. Tolak `.exe` atau script lain.
     - **Size:** Maksimal 5MB per file.
+    - **[IMPLEMENTED]** Max 10 files untuk multi-upload.
 2.  **Cloud Storage Integration:**
     - Backend tidak menyimpan file di disk lokal / database (BLOB).
     - Backend mengupload file ke **Cloudinary**.
 3.  **Response:**
-    - Return JSON berisi URL publik: `{ "url": "https://res.cloudinary.com/..." }`.
+    - Return JSON berisi URL publik.
     - URL inilah yang nanti dikirim Frontend ke endpoint lain (misal: `create-ticket`).
 
 #### Technical Notes & Schema Mapping
 
-- **Endpoint:** `POST /support/upload`
+- **Single Upload Endpoint:** `POST /support/upload/single`
+  - Form field: `file`
+  - Response: `{ "publicId": "...", "url": "https://...", "format": "jpg" }`
+- **Multi Upload Endpoint:** `POST /support/upload/multiple`
+  - Form field: `files` (multiple)
+  - Response: `{ "files": [...], "count": 3 }`
 - **No DB Table:** Modul ini _stateless_ terhadap database. Hanya berinteraksi dengan Cloud Storage Service.
 
 ---
@@ -41,26 +47,35 @@ Fungsi pendukung visualisasi data (Dashboard) dan manajemen file (Utility). Modu
 
 1.  **Data Source - Time Axis (Sumbu X):**
     - Rentang waktu diambil dari table `project_settings`: `start_date` sampai `baseline_deadline`.
-    - Data di-generate per satuan waktu (misal: Per Minggu atau Per Bulan).
+    - **[IMPLEMENTED]** Data di-generate per Minggu (weekly).
 2.  **Logic - Plan Line (Garis Rencana):**
     - Rumus: Akumulasi `task_items.weight` di mana `task_items.deadline` <= Tanggal Sumbu X.
-    - _Contoh:_ Jika Minggu ke-10 deadline task A (Bobot 5%) dan B (Bobot 10%) sudah lewat, maka Plan = 15%.
+    - **[IMPLEMENTED]** Hanya leaf tasks (tanpa children) yang dihitung.
 3.  **Logic - Actual Line (Garis Realisasi):**
     - Rumus: Akumulasi (`progress_logs.snapshot_weight` \* `progress_validations.real_progress_percentage` / 100).
     - Filter: Hanya ambil data yang `progress_validations.is_accepted = TRUE` dan `updated_at` <= Tanggal Sumbu X.
 4.  **Deviation (Deviasi):**
     - Hitung `Actual - Plan`. (Negatif = Terlambat).
 5.  **Structure:**
-    - Response JSON berupa Array of Objects: `[{ date: "2024-01-01", plan: 5.0, actual: 2.1 }, ...]`.
+    - Response JSON berupa Array of Objects.
 
 #### Technical Notes & Schema Mapping
 
 - **Endpoint:** `GET /support/dashboard/s-curve/{projectId}`
-- **Required Joins:**
-  1.  **Get Project Settings:** `projects` -> `project_settings` (untuk Start/End Date).
-  2.  **Get Contract:** `projects` -> `contracts` (untuk dapat `contract_id`).
-  3.  **Get Plan Data:** `contracts` -> `task_items`.
-  4.  **Get Actual Data:** `task_items` -> `progress_logs` -> `progress_validations`.
+- **Response:**
+
+```json
+{
+  "projectName": "Project X",
+  "startDate": "2024-01-01T00:00:00Z",
+  "baselineDeadline": "2024-12-31T00:00:00Z",
+  "dataPoints": [
+    { "date": "2024-01-01", "plan": 0, "actual": 0 },
+    { "date": "2024-01-08", "plan": 5.0, "actual": 2.1 },
+    ...
+  ]
+}
+```
 
 ---
 
@@ -76,11 +91,28 @@ Fungsi pendukung visualisasi data (Dashboard) dan manajemen file (Utility). Modu
     - `Total Budget`: Ambil dari `project_settings.total_budget`.
     - `Disbursed`: Sum `amount` dari table `payment_requests` di mana `status = 'PAID'`.
 2.  **Physical Progress:**
-    - Ambil nilai _Actual Progress_ terakhir dari kalkulasi S-Curve.
+    - **[IMPLEMENTED]** Ambil nilai _Actual Progress_ terkini dari kalkulasi S-Curve.
 3.  **Issues/Tickets:**
-    - Hitung jumlah tiket berdasarkan status dari `ticket_logs` terakhir (Open, In Progress, Resolved).
+    - **[IMPLEMENTED]** Hitung jumlah tiket berdasarkan status (Open, In Progress, Resolved, Closed).
 
 #### Technical Notes & Schema Mapping
 
 - **Endpoint:** `GET /support/dashboard/stats/{projectId}`
-- **Tables:** `project_settings`, `payment_requests`, `tickets`, `ticket_logs`.
+- **Response:**
+
+```json
+{
+  "projectName": "Project X",
+  "totalBudget": "1000000000",
+  "disbursedAmount": "200000000",
+  "currency": "IDR",
+  "physicalProgress": 45.5,
+  "ticketStats": {
+    "open": 5,
+    "inProgress": 3,
+    "resolved": 10,
+    "closed": 2,
+    "total": 20
+  }
+}
+```

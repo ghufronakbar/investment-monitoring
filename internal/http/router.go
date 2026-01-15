@@ -33,8 +33,12 @@ import (
 	finance_service "investment_monitoring/internal/module/finance/service"
 
 	// Support services
+	dashboard_controller "investment_monitoring/internal/module/support/dashboard/controller"
+	dashboard_service "investment_monitoring/internal/module/support/dashboard/service"
 	mail_service "investment_monitoring/internal/module/support/mail/service"
 	token_service "investment_monitoring/internal/module/support/token/service"
+	uploader_controller "investment_monitoring/internal/module/support/uploader/controller"
+	uploader_service "investment_monitoring/internal/module/support/uploader/service"
 
 	repository "investment_monitoring/internal/repository/entity"
 
@@ -70,6 +74,12 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	// Finance services
 	financeSvc := finance_service.NewService(db, cfg)
 
+	// Uploader service
+	uploaderSvc, _ := uploader_service.NewService(cfg)
+
+	// Dashboard service
+	dashboardSvc := dashboard_service.NewService(db, cfg)
+
 	// 2. =========== INITIAL HANDLER ===========
 	subexampleHandler := subexample_controller.NewHandler(subexampleSvc)
 	authHandler := auth_controller.NewHandler(authSvc)
@@ -78,6 +88,8 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	monitoringHandler := monitoring_controller.NewHandler(monitoringSvc, db)
 	trackerHandler := tracker_controller.NewHandler(trackerSvc, db)
 	financeHandler := finance_controller.NewHandler(financeSvc, db)
+	uploaderHandler := uploader_controller.NewHandler(uploaderSvc)
+	dashboardHandler := dashboard_controller.NewHandler(dashboardSvc, db)
 
 	// 3. =========== MANAGE ROUTING ===========
 	r := chi.NewRouter()
@@ -128,6 +140,13 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	r.Route("/finance", func(r chi.Router) {
 		r.Use(authMiddleware)
 		r.Mount("/", financeHandler.Routes())
+	})
+
+	// Support routes (protected)
+	r.Route("/support", func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Mount("/upload", uploaderHandler.Routes())
+		r.Mount("/dashboard", dashboardHandler.Routes())
 	})
 
 	return r

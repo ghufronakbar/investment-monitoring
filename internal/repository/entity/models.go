@@ -104,7 +104,6 @@ func (ns NullOrganizationRoleEnum) Value() (driver.Value, error) {
 type PaymentRequestStatusEnum string
 
 const (
-	PaymentRequestStatusEnumDRAFT           PaymentRequestStatusEnum = "DRAFT"
 	PaymentRequestStatusEnumSUBMITTED       PaymentRequestStatusEnum = "SUBMITTED"
 	PaymentRequestStatusEnumAUDITORAPPROVED PaymentRequestStatusEnum = "AUDITOR_APPROVED"
 	PaymentRequestStatusEnumAUDITORREJECTED PaymentRequestStatusEnum = "AUDITOR_REJECTED"
@@ -310,10 +309,10 @@ type PaymentRequest struct {
 	LoanProviderOrgID     uuid.NullUUID            `json:"loan_provider_org_id"`
 	LoanProviderUserID    uuid.NullUUID            `json:"loan_provider_user_id"`
 	LoanProviderAt        sql.NullTime             `json:"loan_provider_at"`
+	PaymentProofImageUrls []string                 `json:"payment_proof_image_urls"`
 	CreatedAt             time.Time                `json:"created_at"`
 	UpdatedAt             time.Time                `json:"updated_at"`
 	DeletedAt             sql.NullTime             `json:"deleted_at"`
-	PaymentProofImageUrls []string                 `json:"payment_proof_image_urls"`
 }
 
 type ProgressLog struct {

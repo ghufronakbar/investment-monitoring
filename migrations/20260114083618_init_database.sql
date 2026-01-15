@@ -195,6 +195,7 @@ CREATE TABLE payment_requests (
     loan_provider_org_id UUID REFERENCES organizations(id),
     loan_provider_user_id UUID REFERENCES users(id),
     loan_provider_at TIMESTAMPTZ,
+    payment_proof_image_urls TEXT[] NOT NULL DEFAULT '{}',
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
