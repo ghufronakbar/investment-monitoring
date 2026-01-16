@@ -363,6 +363,20 @@ func (s *ProjectService) AssignVendor(ctx context.Context, params AssignVendorPa
 		return AssignmentReturn{}, errs.NewInternalServerError(err)
 	}
 
+	// Validate project settings exist - required before assigning vendor
+	settings, err := s.store.GetProjectSettingsByProjectID(ctx, params.ProjectID)
+	if err == sql.ErrNoRows {
+		return AssignmentReturn{}, errs.NewBadRequest("PROJECT_SETTINGS_REQUIRED")
+	}
+	if err != nil {
+		return AssignmentReturn{}, errs.NewInternalServerError(err)
+	}
+
+	// Validate contract value is less than total budget
+	if params.ContractValue >= settings.TotalBudget {
+		return AssignmentReturn{}, errs.NewBadRequest("CONTRACT_VALUE_EXCEEDS_BUDGET")
+	}
+
 	// Verify org exists and is CONTRACTOR type
 	org, err := s.store.GetOrganizationByID(ctx, params.VendorOrgID)
 	if err == sql.ErrNoRows {

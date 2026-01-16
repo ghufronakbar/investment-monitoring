@@ -349,6 +349,8 @@ Inisialisasi proyek dan penunjukan langsung (Direct Assignment) para pemangku ke
 }
 ```
 
+> **Pre-condition:** Project Settings harus sudah dikonfigurasi sebelum assign vendor.
+
 **Response:**
 
 ```json
@@ -361,15 +363,19 @@ Inisialisasi proyek dan penunjukan langsung (Direct Assignment) para pemangku ke
 **Flow:**
 
 1. Validasi user adalah ADMIN dari EXECUTING_AGENCY
-2. Validasi vendorOrgId adalah organization dengan role CONTRACTOR
-3. Update `contracts.vendor_participant_id`, `contract_value`, `contract_doc_url`, `vendor_selected_at`
-4. Kontraktor sekarang dapat melihat dan submit progress
+2. **Validasi Project Settings sudah dikonfigurasi**
+3. **Validasi contractValue < totalBudget**
+4. Validasi vendorOrgId adalah organization dengan role CONTRACTOR
+5. Update `contracts.vendor_participant_id`, `contract_value`, `contract_doc_url`, `vendor_selected_at`
+6. Kontraktor sekarang dapat melihat dan submit progress
 
 **Error Codes:**
 
 - `EXECUTING_AGENCY_ADMIN_REQUIRED` - User bukan ADMIN dari EXECUTING_AGENCY
+- `PROJECT_SETTINGS_REQUIRED` - Project settings belum dikonfigurasi
+- `CONTRACT_VALUE_EXCEEDS_BUDGET` - Contract value >= total budget
 - `ORGANIZATION_NOT_FOUND` - Organization tidak ditemukan
-- `INVALID_ORGANIZATION_ROLE` - Organization bukan CONTRACTOR
+- `ORGANIZATION_NOT_CONTRACTOR` - Organization bukan CONTRACTOR
 
 **Success Code:** `SUCCESS_ASSIGN_VENDOR`
 
