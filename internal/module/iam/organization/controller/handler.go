@@ -61,6 +61,12 @@ func (h *Handler) Routes() chi.Router {
 			AllowedOrgRoles:    internal_middleware.AllOrgRoles(),
 			AllowedMemberRoles: internal_middleware.AdminOnly(),
 		})).Post("/member/invite", h.InviteMember)
+
+		// Update Organization - Any org, but only ADMIN can update
+		r.With(internal_middleware.OrgRoleMiddleware(h.store, internal_middleware.OrgRoleMiddlewareOptions{
+			AllowedOrgRoles:    internal_middleware.AllOrgRoles(),
+			AllowedMemberRoles: internal_middleware.AdminOnly(),
+		})).Put("/", h.Update)
 	})
 
 	return r
@@ -203,4 +209,45 @@ func (h *Handler) GetRegisteredOrganizations(w http.ResponseWriter, r *http.Requ
 	}
 
 	response.OK(w, r, "SUCCESS_GET_REGISTERED_ORGANIZATIONS", res)
+}
+
+// Update handles PUT /iam/organization/{orgId}
+// Updates organization name and logo (only ADMIN can do this)
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+	var req organization_service.UpdateOrganizationParams
+
+	// Get org membership from middleware (validates caller is ADMIN)
+	membership, err := internal_middleware.GetOrgMembershipFromContext(r.Context())
+	if err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
+
+	orgIdStr := chi.URLParam(r, "orgId")
+	orgId, err := uuid.Parse(orgIdStr)
+	if err != nil {
+		response.Error(w, r, errs.NewValidationFailed(map[string]string{"orgId": "Invalid UUID"}), nil)
+		return
+	}
+
+	// Verify the orgId matches the membership context
+	if orgId != membership.OrganizationID {
+		response.Error(w, r, errs.NewForbidden("ORG_ID_MISMATCH"), nil)
+		return
+	}
+
+	if appErr := utils.ValidateStruct(r.Body, &req); appErr != nil {
+		response.ValidationFailed(w, r, appErr.ValidationErrors)
+		return
+	}
+
+	req.ID = orgId
+
+	res, err := h.svc.Update(r.Context(), req)
+	if err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
+
+	response.OK(w, r, "SUCCESS_UPDATE_ORGANIZATION", res)
 }

@@ -457,3 +457,93 @@ func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams
 	)
 	return i, err
 }
+
+const updateOrganization = `-- name: UpdateOrganization :one
+UPDATE organizations 
+SET name = $2, logo_url = $3 
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, name, logo_url, role, created_at, updated_at, deleted_at
+`
+
+type UpdateOrganizationParams struct {
+	ID      uuid.UUID      `json:"id"`
+	Name    string         `json:"name"`
+	LogoUrl sql.NullString `json:"logo_url"`
+}
+
+// Update organization name and logo
+func (q *Queries) UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error) {
+	row := q.db.QueryRowContext(ctx, updateOrganization, arg.ID, arg.Name, arg.LogoUrl)
+	var i Organization
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.LogoUrl,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateUserPasswordByID = `-- name: UpdateUserPasswordByID :one
+UPDATE users 
+SET password = $2 
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, image_url, name, email, password, created_at, updated_at, deleted_at
+`
+
+type UpdateUserPasswordByIDParams struct {
+	ID       uuid.UUID      `json:"id"`
+	Password sql.NullString `json:"password"`
+}
+
+// Update user password by ID
+func (q *Queries) UpdateUserPasswordByID(ctx context.Context, arg UpdateUserPasswordByIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserPasswordByID, arg.ID, arg.Password)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.ImageUrl,
+		&i.Name,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+
+UPDATE users 
+SET name = $2, image_url = $3 
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, image_url, name, email, password, created_at, updated_at, deleted_at
+`
+
+type UpdateUserProfileParams struct {
+	ID       uuid.UUID      `json:"id"`
+	Name     string         `json:"name"`
+	ImageUrl sql.NullString `json:"image_url"`
+}
+
+// ===== PROFILE QUERIES =====
+// Update user profile (name, image_url)
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserProfile, arg.ID, arg.Name, arg.ImageUrl)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.ImageUrl,
+		&i.Name,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}

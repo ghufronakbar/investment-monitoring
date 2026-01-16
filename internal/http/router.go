@@ -15,6 +15,8 @@ import (
 	auth_service "investment_monitoring/internal/module/iam/auth/service"
 	organization_controller "investment_monitoring/internal/module/iam/organization/controller"
 	organization_service "investment_monitoring/internal/module/iam/organization/service"
+	profile_controller "investment_monitoring/internal/module/iam/profile/controller"
+	profile_service "investment_monitoring/internal/module/iam/profile/service"
 
 	// Project module
 	project_controller "investment_monitoring/internal/module/project/controller"
@@ -61,6 +63,7 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	// IAM services
 	authSvc := auth_service.NewService(db, tokenSvc, cfg)
 	orgSvc := organization_service.NewService(db, mailSvc, cfg)
+	profileSvc := profile_service.NewService(db, cfg)
 
 	// Project services
 	projectSvc := project_service.NewService(db, cfg)
@@ -84,6 +87,7 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	subexampleHandler := subexample_controller.NewHandler(subexampleSvc)
 	authHandler := auth_controller.NewHandler(authSvc)
 	orgHandler := organization_controller.NewHandler(orgSvc, db)
+	profileHandler := profile_controller.NewHandler(profileSvc)
 	projectHandler := project_controller.NewHandler(projectSvc, db)
 	monitoringHandler := monitoring_controller.NewHandler(monitoringSvc, db)
 	trackerHandler := tracker_controller.NewHandler(trackerSvc, db)
@@ -104,6 +108,12 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	r.Route("/iam", func(r chi.Router) {
 		// Auth routes (public, no auth required)
 		r.Mount("/auth", authHandler.Routes())
+
+		// Profile routes (protected)
+		r.Route("/profile", func(r chi.Router) {
+			r.Use(authMiddleware)
+			r.Mount("/", profileHandler.Routes())
+		})
 
 		// Organization routes
 		r.Route("/organization", func(r chi.Router) {

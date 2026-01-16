@@ -528,6 +528,7 @@ SELECT
         WHEN c.executing_agency_participant_id = om.organization_id THEN 'EXECUTING_AGENCY'
         WHEN c.vendor_participant_id = om.organization_id THEN 'CONTRACTOR'
         WHEN c.auditor_participant_id = om.organization_id THEN 'INDEPENDENT_AUDITOR'
+        WHEN gp.gov_participant_id IS NOT NULL THEN 'GOV_PARTNER'
         ELSE NULL
     END as participant_role,
     om.role as member_role,
@@ -535,18 +536,19 @@ SELECT
     o.name as org_name,
     o.role as org_type
 FROM contracts c
-JOIN organization_members om ON (
-    om.organization_id = c.gov_supervisor_participant_id OR
-    om.organization_id = c.loan_provider_participant_id OR
-    om.organization_id = c.executing_agency_participant_id OR
-    om.organization_id = c.vendor_participant_id OR
-    om.organization_id = c.auditor_participant_id
-)
+JOIN organization_members om ON om.user_id = $2 AND om.deleted_at IS NULL
 JOIN organizations o ON o.id = om.organization_id
+LEFT JOIN gov_participants gp ON gp.contract_id = c.id AND gp.gov_participant_id = om.organization_id AND gp.deleted_at IS NULL
 WHERE c.project_id = $1 
-    AND om.user_id = $2 
     AND c.deleted_at IS NULL 
-    AND om.deleted_at IS NULL
+    AND (
+        om.organization_id = c.gov_supervisor_participant_id OR
+        om.organization_id = c.loan_provider_participant_id OR
+        om.organization_id = c.executing_agency_participant_id OR
+        om.organization_id = c.vendor_participant_id OR
+        om.organization_id = c.auditor_participant_id OR
+        gp.gov_participant_id IS NOT NULL
+    )
 LIMIT 1
 `
 
@@ -566,7 +568,7 @@ type GetUserProjectAccessRow struct {
 }
 
 // ===== PROJECT ACCESS HELPERS =====
-// Check if user's organization has access to a project via contract
+// Check if user's organization has access to a project via contract (including GOV_PARTNER)
 func (q *Queries) GetUserProjectAccess(ctx context.Context, arg GetUserProjectAccessParams) (GetUserProjectAccessRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserProjectAccess, arg.ProjectID, arg.UserID)
 	var i GetUserProjectAccessRow
@@ -621,22 +623,25 @@ func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
 const listUserAccessibleProjects = `-- name: ListUserAccessibleProjects :many
 SELECT DISTINCT p.id, p.image_urls, p.name, p.description, p.contract_file_url, p.created_at, p.updated_at, p.deleted_at FROM projects p
 JOIN contracts c ON c.project_id = p.id
-JOIN organization_members om ON (
-    om.organization_id = c.gov_supervisor_participant_id OR
-    om.organization_id = c.loan_provider_participant_id OR
-    om.organization_id = c.executing_agency_participant_id OR
-    om.organization_id = c.vendor_participant_id OR
-    om.organization_id = c.auditor_participant_id
-)
-LEFT JOIN gov_participants gp ON gp.contract_id = c.id AND gp.gov_participant_id = om.organization_id
+JOIN organization_members om ON om.deleted_at IS NULL
+LEFT JOIN gov_participants gp ON gp.contract_id = c.id AND gp.gov_participant_id = om.organization_id AND gp.deleted_at IS NULL
 WHERE om.user_id = $1 
     AND p.deleted_at IS NULL 
     AND c.deleted_at IS NULL 
-    AND om.deleted_at IS NULL
+    AND (
+        -- Direct contract participants
+        om.organization_id = c.gov_supervisor_participant_id OR
+        om.organization_id = c.loan_provider_participant_id OR
+        om.organization_id = c.executing_agency_participant_id OR
+        om.organization_id = c.vendor_participant_id OR
+        om.organization_id = c.auditor_participant_id OR
+        -- GOV_PARTNER via pivot table
+        gp.gov_participant_id IS NOT NULL
+    )
 ORDER BY p.created_at DESC
 `
 
-// Get all projects where user's organization is a participant
+// Get all projects where user's organization is a participant (including GOV_PARTNER)
 func (q *Queries) ListUserAccessibleProjects(ctx context.Context, userID uuid.UUID) ([]Project, error) {
 	rows, err := q.db.QueryContext(ctx, listUserAccessibleProjects, userID)
 	if err != nil {

@@ -184,9 +184,133 @@ Manajemen identitas yang ketat berbasis undangan (Invite-Only) untuk menjamin ke
 
 ---
 
+## Profile Routes
+
+### 5. Get Profile
+
+**Endpoint:** `GET /iam/profile`
+
+**Description:** Mendapatkan profil user yang sedang login beserta semua organization memberships.
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Request Body:** None
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "imageUrl": "string | null",
+  "memberships": [
+    {
+      "id": "uuid (membership id)",
+      "memberRole": "ADMIN | MEMBER",
+      "orgId": "uuid",
+      "orgName": "string",
+      "orgRole": "CONTRACTOR | GOV_PARTNER | INDEPENDENT_AUDITOR | LOAN_PROVIDER | EXECUTING_AGENCY",
+      "orgLogoUrl": "string | null",
+      "createdAt": "timestamp"
+    }
+  ]
+}
+```
+
+**Error Codes:**
+
+- `USER_NOT_FOUND` - User tidak ditemukan
+
+**Success Code:** `SUCCESS_GET_PROFILE`
+
+---
+
+### 6. Update Profile
+
+**Endpoint:** `PUT /iam/profile`
+
+**Description:** Update profil user (nama dan foto profil).
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Request Body:**
+
+```json
+{
+  "name": "string (required, min 2 characters)",
+  "imageUrl": "string (optional, valid URL)"
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "name": "New Name",
+  "email": "john@example.com",
+  "imageUrl": "string | null"
+}
+```
+
+**Flow:**
+
+1. Validasi access token
+2. Update name dan imageUrl di database
+3. Return updated profile
+
+**Error Codes:**
+
+- `USER_NOT_FOUND` - User tidak ditemukan
+
+**Success Code:** `SUCCESS_UPDATE_PROFILE`
+
+---
+
+### 7. Change Password
+
+**Endpoint:** `PUT /iam/profile/password`
+
+**Description:** Ganti password user. Membutuhkan password lama untuk verifikasi.
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Request Body:**
+
+```json
+{
+  "currentPassword": "string (required, min 6 characters)",
+  "newPassword": "string (required, min 6 characters)"
+}
+```
+
+**Response:**
+
+```json
+{
+  "message": "PASSWORD_CHANGED_SUCCESSFULLY"
+}
+```
+
+**Flow:**
+
+1. Validasi access token
+2. Verifikasi current password
+3. Hash new password dan simpan ke database
+
+**Error Codes:**
+
+- `PASSWORD_NOT_SET` - Password belum diset
+- `CURRENT_PASSWORD_INCORRECT` - Password lama salah
+
+**Success Code:** `SUCCESS_CHANGE_PASSWORD`
+
+---
+
 ## Organization Routes
 
-### 5. Get Registered Organizations (Public)
+### 8. Get Registered Organizations (Public)
 
 **Endpoint:** `GET /iam/organization/registered`
 
@@ -457,6 +581,59 @@ Manajemen identitas yang ketat berbasis undangan (Invite-Only) untuk menjamin ke
 
 ---
 
+### 11. Update Organization
+
+**Endpoint:** `PUT /iam/organization/{orgId}`
+
+**Description:** Update nama dan logo organisasi.
+
+**Authentication:** ✅ Bearer Token (Access Token)
+
+**Authorization:**
+
+- **Allowed Organization Roles:** Semua (Any Organization)
+- **Allowed Member Roles:** `ADMIN` only
+
+**URL Parameters:**
+
+- `orgId`: UUID of the organization
+
+**Request Body:**
+
+```json
+{
+  "name": "string (required, min 2 characters)",
+  "logoUrl": "string (optional, valid URL)"
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "uuid",
+  "name": "Updated Org Name",
+  "role": "CONTRACTOR | GOV_PARTNER | ...",
+  "logoUrl": "string | null",
+  "updatedAt": "timestamp"
+}
+```
+
+**Flow:**
+
+1. Validasi caller adalah ADMIN dari organisasi
+2. Update nama dan logo organisasi
+3. Return data organisasi yang sudah diupdate
+
+**Error Codes:**
+
+- `FORBIDDEN` - Caller bukan ADMIN
+- `ORGANIZATION_NOT_FOUND` - Organisasi tidak ditemukan
+
+**Success Code:** `SUCCESS_UPDATE_ORGANIZATION`
+
+---
+
 ## Summary Table
 
 | #   | Endpoint                                  | Method | Auth | Authorization                           | Description                   |
@@ -465,9 +642,13 @@ Manajemen identitas yang ketat berbasis undangan (Invite-Only) untuk menjamin ke
 | 2   | `/iam/auth/login`                         | POST   | ❌   | -                                       | Login with password           |
 | 3   | `/iam/auth/set-password`                  | POST   | ❌   | -                                       | Set password for invited user |
 | 4   | `/iam/auth/refresh-token`                 | POST   | ❌   | Refresh Token                           | Get new access token          |
-| 5   | `/iam/organization/registered`            | GET    | ❌   | -                                       | List all organizations        |
-| 6   | `/iam/organization/my`                    | GET    | ✅   | -                                       | List user's organizations     |
-| 7   | `/iam/organization/{orgId}`               | POST   | ✅   | GOV_SUPERVISOR/EXECUTING_AGENCY + ADMIN | Create organization           |
-| 8   | `/iam/organization/{orgId}`               | GET    | ✅   | Member of org                           | Get organization detail       |
-| 9   | `/iam/organization/{orgId}/member`        | GET    | ✅   | Member of org                           | List organization members     |
-| 10  | `/iam/organization/{orgId}/member/invite` | POST   | ✅   | ADMIN of org                            | Invite new member             |
+| 5   | `/iam/profile`                            | GET    | ✅   | -                                       | Get current user profile      |
+| 6   | `/iam/profile`                            | PUT    | ✅   | -                                       | Update profile (name, image)  |
+| 7   | `/iam/profile/password`                   | PUT    | ✅   | -                                       | Change password               |
+| 8   | `/iam/organization/registered`            | GET    | ❌   | -                                       | List all organizations        |
+| 9   | `/iam/organization/my`                    | GET    | ✅   | -                                       | List user's organizations     |
+| 10  | `/iam/organization/{orgId}`               | POST   | ✅   | GOV_SUPERVISOR/EXECUTING_AGENCY + ADMIN | Create organization           |
+| 11  | `/iam/organization/{orgId}`               | GET    | ✅   | Member of org                           | Get organization detail       |
+| 12  | `/iam/organization/{orgId}`               | PUT    | ✅   | ADMIN of org                            | Update organization           |
+| 13  | `/iam/organization/{orgId}/member`        | GET    | ✅   | Member of org                           | List organization members     |
+| 14  | `/iam/organization/{orgId}/member/invite` | POST   | ✅   | ADMIN of org                            | Invite new member             |

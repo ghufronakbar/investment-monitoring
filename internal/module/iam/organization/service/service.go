@@ -349,3 +349,45 @@ func (s *OrganizationService) GetRegisteredOrganizations(ctx context.Context) ([
 
 	return result, nil
 }
+
+// Update updates an organization's name and logo
+func (s *OrganizationService) Update(ctx context.Context, params UpdateOrganizationParams) (UpdateOrganizationReturn, error) {
+	// Verify organization exists
+	_, err := s.store.GetOrganizationByID(ctx, params.ID)
+	if err == sql.ErrNoRows {
+		return UpdateOrganizationReturn{}, errs.NewNotFound("ORGANIZATION_NOT_FOUND")
+	}
+	if err != nil {
+		return UpdateOrganizationReturn{}, errs.NewInternalServerError(err)
+	}
+
+	// Prepare logo URL
+	var logoUrl sql.NullString
+	if params.LogoUrl != nil && *params.LogoUrl != "" {
+		logoUrl = sql.NullString{String: *params.LogoUrl, Valid: true}
+	}
+
+	// Update organization
+	org, err := s.store.UpdateOrganization(ctx, entity.UpdateOrganizationParams{
+		ID:      params.ID,
+		Name:    params.Name,
+		LogoUrl: logoUrl,
+	})
+	if err != nil {
+		return UpdateOrganizationReturn{}, errs.NewInternalServerError(err)
+	}
+
+	// Map response
+	var returnLogoUrl *string
+	if org.LogoUrl.Valid {
+		returnLogoUrl = &org.LogoUrl.String
+	}
+
+	return UpdateOrganizationReturn{
+		ID:        org.ID,
+		Name:      org.Name,
+		Role:      string(org.Role),
+		LogoUrl:   returnLogoUrl,
+		UpdatedAt: org.UpdatedAt,
+	}, nil
+}

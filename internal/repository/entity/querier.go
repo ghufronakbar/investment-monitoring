@@ -152,7 +152,7 @@ type Querier interface {
 	// Get all organization memberships for a user
 	GetUserMemberships(ctx context.Context, userID uuid.UUID) ([]GetUserMembershipsRow, error)
 	// ===== PROJECT ACCESS HELPERS =====
-	// Check if user's organization has access to a project via contract
+	// Check if user's organization has access to a project via contract (including GOV_PARTNER)
 	GetUserProjectAccess(ctx context.Context, arg GetUserProjectAccessParams) (GetUserProjectAccessRow, error)
 	GetValidationByProgressLogID(ctx context.Context, progressLogID uuid.UUID) (ProgressValidation, error)
 	// Check if there's any pending payment request
@@ -160,15 +160,22 @@ type Querier interface {
 	// List all organizations with pagination
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
 	ListProjects(ctx context.Context) ([]Project, error)
-	// Get all projects where user's organization is a participant
+	// Get all projects where user's organization is a participant (including GOV_PARTNER)
 	ListUserAccessibleProjects(ctx context.Context, userID uuid.UUID) ([]Project, error)
 	// Set password for user (used when user activates account)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) (User, error)
 	SoftDeleteExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
 	UpdateExampleByID(ctx context.Context, arg UpdateExampleByIDParams) (Example, error)
+	// Update organization name and logo
+	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateProjectSettings(ctx context.Context, arg UpdateProjectSettingsParams) (ProjectSetting, error)
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (TaskItem, error)
+	// Update user password by ID
+	UpdateUserPasswordByID(ctx context.Context, arg UpdateUserPasswordByIDParams) (User, error)
+	// ===== PROFILE QUERIES =====
+	// Update user profile (name, image_url)
+	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpsertProjectSettings(ctx context.Context, arg UpsertProjectSettingsParams) (ProjectSetting, error)
 }
 

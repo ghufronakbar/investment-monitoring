@@ -28,3 +28,9 @@ type GetMembersParams struct {
 type GetMyOrganizationsParams struct {
 	UserID uuid.UUID `json:"-"` // from authenticated user
 }
+
+type UpdateOrganizationParams struct {
+	ID      uuid.UUID `json:"-"` // from URL param
+	Name    string    `json:"name" validate:"required,min=2"`
+	LogoUrl *string   `json:"logoUrl"`
+}

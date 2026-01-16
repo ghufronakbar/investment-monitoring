@@ -66,3 +66,11 @@ type MyOrganizationReturn struct {
 	OrgLogoUrl   *string   `json:"orgLogoUrl"`
 	JoinedAt     time.Time `json:"joinedAt"`
 }
+
+type UpdateOrganizationReturn struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Role      string    `json:"role"`
+	LogoUrl   *string   `json:"logoUrl"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}

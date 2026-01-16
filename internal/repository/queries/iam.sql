@@ -51,6 +51,14 @@ LIMIT $1 OFFSET $2;
 -- Count total organizations
 SELECT COUNT(*) FROM organizations WHERE deleted_at IS NULL;
 
+-- name: UpdateOrganization :one
+-- Update organization name and logo
+UPDATE organizations 
+SET name = $2, logo_url = $3 
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING *;
+
+
 -- ===== ORGANIZATION MEMBER QUERIES =====
 
 -- name: CreateOrganizationMember :one
@@ -108,3 +116,20 @@ SELECT EXISTS(
     SELECT 1 FROM organization_members 
     WHERE user_id = $1 AND organization_id = $2 AND deleted_at IS NULL
 ) as exists;
+
+-- ===== PROFILE QUERIES =====
+
+-- name: UpdateUserProfile :one
+-- Update user profile (name, image_url)
+UPDATE users 
+SET name = $2, image_url = $3 
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING *;
+
+-- name: UpdateUserPasswordByID :one
+-- Update user password by ID
+UPDATE users 
+SET password = $2 
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING *;
+
