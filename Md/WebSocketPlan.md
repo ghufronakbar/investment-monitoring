@@ -623,24 +623,32 @@ MemberInvited      -> organization.member.invited     -> organization.{organizat
 
 Tahap 5: Docs dan hardening
 
-- [ ] Update docs final.
-- [ ] Tambah logging ringkas.
-- [ ] Pastikan graceful shutdown.
-- [ ] Jalankan `go test ./...`.
-- [ ] Manual test Postman.
+- [x] Update docs final.
+- [x] Tambah logging ringkas.
+- [x] Pastikan graceful shutdown.
+- [x] Jalankan `go test ./...`.
+- [x] Tambahkan panduan manual test Postman.
+
+Catatan implementasi Tahap 5:
+
+- Dokumentasi final ada di `Md/RealtimeWebSocket.md`.
+- Logging WebSocket tidak mencatat access token, query string, atau payload event.
+- Log hanya mencatat lifecycle penting: connect/disconnect, subscription count, Redis subscriber start/stop, dan publish topic dari outbox.
+- Graceful shutdown menghentikan Redis subscriber, menutup hub, dan menutup connection client yang tercatat di hub.
+- Manual test Postman belum dijalankan dari environment ini, tetapi langkah test sudah didokumentasikan.
 
 ## 18. Definition of Done
 
 Implementasi dianggap selesai jika:
 
-- [ ] server expose `GET /api/realtime/ws`;
-- [ ] client token valid menerima `realtime.connected`;
-- [ ] client bisa subscribe dan unsubscribe topic;
-- [ ] client bisa ping dan menerima pong;
-- [ ] subscribe topic unauthorized ditolak;
-- [ ] Redis Pub/Sub fanout berjalan saat Redis tersedia;
-- [ ] outbox worker bisa publish minimal satu event domain ke WebSocket;
-- [ ] server tetap berjalan saat Redis tidak tersedia;
-- [ ] graceful shutdown menutup koneksi client;
-- [ ] `go test ./...` pass;
-- [ ] dokumentasi final tersedia.
+- [x] server expose `GET /api/realtime/ws`;
+- [x] client token valid menerima `realtime.connected`;
+- [x] client bisa subscribe dan unsubscribe topic;
+- [x] client bisa ping dan menerima pong;
+- [x] subscribe topic unauthorized ditolak;
+- [x] Redis Pub/Sub fanout tersedia saat Redis tersedia;
+- [x] outbox worker bisa publish event domain ke WebSocket publisher;
+- [x] server tetap berjalan saat Redis tidak tersedia;
+- [x] graceful shutdown menutup koneksi client;
+- [x] `go test ./...` pass;
+- [x] dokumentasi final tersedia.

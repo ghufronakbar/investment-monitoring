@@ -12,8 +12,9 @@ type Client struct {
 	UserID uuid.UUID
 	Email  string
 
-	send   chan Envelope
-	topics map[string]bool
+	send      chan Envelope
+	topics    map[string]bool
+	closeFunc func()
 
 	mu     sync.RWMutex
 	closed bool
@@ -31,6 +32,12 @@ func NewClient(userID uuid.UUID, email string, sendBuffer int) *Client {
 		send:   make(chan Envelope, sendBuffer),
 		topics: make(map[string]bool),
 	}
+}
+
+func (c *Client) SetCloseFunc(closeFunc func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.closeFunc = closeFunc
 }
 
 func (c *Client) Enqueue(envelope Envelope) bool {
@@ -86,5 +93,8 @@ func (c *Client) Close() {
 	}
 
 	c.closed = true
+	if c.closeFunc != nil {
+		c.closeFunc()
+	}
 	close(c.send)
 }

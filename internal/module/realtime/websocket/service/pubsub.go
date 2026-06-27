@@ -89,4 +89,5 @@ func (r *redisPubSub) shutdown() {
 		r.cancel()
 	}
 	r.wg.Wait()
+	log.Printf("websocket redis fanout subscriber stopped channel=%s", r.channel)
 }

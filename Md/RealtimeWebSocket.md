@@ -209,6 +209,7 @@ type ErrorData struct {
 
 - Tidak ada replay untuk client yang offline.
 - Presence belum dibuat.
+- Manual test tetap disarankan untuk validasi browser/proxy karena automated test memakai `httptest`.
 
 ## Redis Fanout
 
@@ -267,3 +268,117 @@ Mapping event:
 | `MemberInvited` | `organization.member.invited` | `organization.{organizationId}`, `user.{userId}` |
 
 Jika outbox payload belum memiliki routing metadata seperti `projectId`, mapper akan melakukan query fallback berdasarkan aggregate id.
+
+## Frontend Example
+
+```js
+const ws = new WebSocket(
+  `ws://localhost:2001/api/realtime/ws?accessToken=${encodeURIComponent(accessToken)}`
+)
+
+let heartbeat
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: 'subscribe',
+    topics: [
+      `user.${userId}`,
+      `project.${projectId}.monitoring`,
+      `project.${projectId}.ticket`
+    ]
+  }))
+
+  heartbeat = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }))
+    }
+  }, 30000)
+}
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data)
+
+  switch (message.type) {
+    case 'realtime.connected':
+      break
+    case 'realtime.subscription_updated':
+      break
+    case 'progress.submitted':
+    case 'progress.validated':
+    case 'ticket.created':
+    case 'ticket.assigned':
+    case 'ticket.resolved':
+    case 'ticket.closed':
+    case 'payment.approved':
+    case 'payment.paid':
+      // refetch dashboard/list/detail sesuai topic
+      break
+  }
+}
+
+ws.onclose = () => {
+  clearInterval(heartbeat)
+}
+```
+
+## Postman Manual Test
+
+1. Login via REST API dan ambil access token.
+2. Buat request baru dengan type `WebSocket`.
+3. Connect ke URL:
+
+```text
+ws://localhost:{PORT}/api/realtime/ws?accessToken={accessToken}
+```
+
+4. Setelah connect, pastikan menerima:
+
+```json
+{
+  "type": "realtime.connected"
+}
+```
+
+5. Kirim ping:
+
+```json
+{
+  "type": "ping"
+}
+```
+
+6. Pastikan server membalas:
+
+```json
+{
+  "type": "realtime.pong"
+}
+```
+
+7. Subscribe topic yang valid:
+
+```json
+{
+  "type": "subscribe",
+  "topic": "user.{yourUserId}"
+}
+```
+
+8. Subscribe topic yang tidak boleh diakses untuk memastikan topic masuk `rejected`:
+
+```json
+{
+  "type": "subscribe",
+  "topic": "user.{otherUserId}"
+}
+```
+
+9. Jalankan aksi domain, misalnya create ticket atau submit progress, lalu pastikan client yang subscribe topic terkait menerima event domain.
+
+## Operational Notes
+
+- Access token boleh dikirim lewat query `accessToken`; request logger saat ini hanya mencatat path tanpa query string.
+- Jangan log full WebSocket URL di reverse proxy production.
+- `WEBSOCKET_ALLOWED_ORIGINS=*` dipakai untuk development. Untuk production, ganti menjadi whitelist domain frontend.
+- Jika Redis mati, API tetap menerima WebSocket connection. Event dari worker tidak bisa fanout lintas instance sampai Redis pulih.
+- Graceful shutdown menghentikan Redis subscriber, menutup hub, dan menutup client connection yang tercatat di hub.

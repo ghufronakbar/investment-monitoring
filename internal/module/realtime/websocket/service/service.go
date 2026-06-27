@@ -3,6 +3,7 @@ package websocket_service
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -73,7 +74,11 @@ func (s *Service) HandleConnection(ctx context.Context, conn *websocket.Conn, cl
 	conn.SetReadLimit(s.cfg.WEBSOCKET_READ_LIMIT_BYTES)
 
 	client := NewClient(claims.ID, claims.Email, s.cfg.WEBSOCKET_CLIENT_SEND_BUFFER)
+	client.SetCloseFunc(func() {
+		_ = conn.Close(websocket.StatusNormalClosure, "connection closed")
+	})
 	s.hub.Register(client)
+	log.Printf("websocket client connected client_id=%s user_id=%s", client.ID, client.UserID)
 
 	writeDone := make(chan struct{})
 	go func() {
@@ -90,8 +95,8 @@ func (s *Service) HandleConnection(ctx context.Context, conn *websocket.Conn, cl
 	s.readLoop(ctx, conn, client)
 
 	s.hub.Unregister(client)
-	_ = conn.Close(websocket.StatusNormalClosure, "connection closed")
 	<-writeDone
+	log.Printf("websocket client disconnected client_id=%s user_id=%s", client.ID, client.UserID)
 }
 
 func (s *Service) Start(ctx context.Context) error {
@@ -99,6 +104,7 @@ func (s *Service) Start(ctx context.Context) error {
 		return nil
 	}
 	s.pubsub.start(ctx, s.hub.Publish)
+	log.Printf("websocket redis fanout subscriber started channel=%s", s.pubsub.channel)
 	return nil
 }
 
@@ -107,6 +113,7 @@ func (s *Service) Shutdown(_ context.Context) error {
 		s.pubsub.shutdown()
 	}
 	s.hub.Shutdown()
+	log.Println("websocket service shutdown completed")
 	return nil
 }
 
@@ -191,6 +198,7 @@ func (s *Service) handleSubscribe(ctx context.Context, client *Client, msg Clien
 		Unsubscribed: []string{},
 		Rejected:     rejected,
 	}))
+	log.Printf("websocket subscription updated client_id=%s user_id=%s subscribed=%d rejected=%d", client.ID, client.UserID, len(subscribed), len(rejected))
 }
 
 func (s *Service) handleUnsubscribe(client *Client, msg ClientMessage) {
@@ -211,6 +219,7 @@ func (s *Service) handleUnsubscribe(client *Client, msg ClientMessage) {
 		Unsubscribed: unsubscribed,
 		Rejected:     rejected,
 	}))
+	log.Printf("websocket subscription updated client_id=%s user_id=%s unsubscribed=%d rejected=%d", client.ID, client.UserID, len(unsubscribed), len(rejected))
 }
 
 func isValidTopic(topic string) bool {
