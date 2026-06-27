@@ -1,6 +1,7 @@
 package websocket_service
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,6 +41,14 @@ type SubscriptionUpdatedData struct {
 
 type ErrorData struct {
 	Message string `json:"message"`
+}
+
+type DomainEventData struct {
+	OutboxEventID uuid.UUID       `json:"outboxEventId"`
+	EventType     string          `json:"eventType"`
+	AggregateType string          `json:"aggregateType"`
+	AggregateID   uuid.UUID       `json:"aggregateId"`
+	Payload       json.RawMessage `json:"payload"`
 }
 
 func NewSystemEnvelope(eventType string, data any) Envelope {

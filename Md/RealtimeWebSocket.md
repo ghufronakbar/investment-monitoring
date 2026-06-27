@@ -207,7 +207,6 @@ type ErrorData struct {
 
 ## Batasan Saat Ini
 
-- Outbox event belum dikirim ke WebSocket.
 - Tidak ada replay untuk client yang offline.
 - Presence belum dibuat.
 
@@ -233,3 +232,38 @@ Payload yang dipublish ke Redis memakai envelope yang sama dengan payload WebSoc
 ```
 
 Jika Redis tidak tersedia, server tetap berjalan dan `Publish` fallback ke local hub. Fallback ini cukup untuk single API instance, tetapi tidak mengirim event lintas instance.
+
+## Outbox Domain Events
+
+Outbox worker sekarang mengubah event domain menjadi envelope WebSocket dan publish ke realtime publisher.
+
+Tipe `data` untuk event domain:
+
+```json
+{
+  "outboxEventId": "uuid",
+  "eventType": "TicketCreated",
+  "aggregateType": "ticket",
+  "aggregateId": "uuid",
+  "payload": {
+    "ticketId": "uuid",
+    "projectId": "uuid"
+  }
+}
+```
+
+Mapping event:
+
+| Outbox Event | WebSocket Type | Topics |
+|---|---|---|
+| `ProgressSubmitted` | `progress.submitted` | `project.{projectId}.monitoring` |
+| `ProgressValidated` | `progress.validated` | `project.{projectId}.monitoring` |
+| `TicketCreated` | `ticket.created` | `project.{projectId}.ticket`, `ticket.{ticketId}` |
+| `TicketAssigned` | `ticket.assigned` | `project.{projectId}.ticket`, `ticket.{ticketId}` |
+| `TicketResolved` | `ticket.resolved` | `project.{projectId}.ticket`, `ticket.{ticketId}` |
+| `TicketClosed` | `ticket.closed` | `project.{projectId}.ticket`, `ticket.{ticketId}` |
+| `PaymentApproved` | `payment.approved` | `project.{projectId}.finance`, `payment.{paymentRequestId}` |
+| `PaymentPaid` | `payment.paid` | `project.{projectId}.finance`, `payment.{paymentRequestId}` |
+| `MemberInvited` | `organization.member.invited` | `organization.{organizationId}`, `user.{userId}` |
+
+Jika outbox payload belum memiliki routing metadata seperti `projectId`, mapper akan melakukan query fallback berdasarkan aggregate id.

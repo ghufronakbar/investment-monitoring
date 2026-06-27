@@ -9,11 +9,17 @@ import (
 )
 
 type Processor struct {
-	store entity.Store
+	store     entity.Store
+	publisher RealtimePublisher
+	mapper    *RealtimeMapper
 }
 
-func NewProcessor(store entity.Store) *Processor {
-	return &Processor{store: store}
+func NewProcessor(store entity.Store, publisher RealtimePublisher) *Processor {
+	return &Processor{
+		store:     store,
+		publisher: publisher,
+		mapper:    NewRealtimeMapper(store),
+	}
 }
 
 func (p *Processor) ProcessBatch(ctx context.Context, limit int32) error {
@@ -36,6 +42,21 @@ func (p *Processor) ProcessBatch(ctx context.Context, limit int32) error {
 		}
 
 		log.Printf("processing outbox event id=%s type=%s aggregate=%s:%s", claimed.ID, claimed.EventType, claimed.AggregateType, claimed.AggregateID)
+
+		if p.publisher != nil {
+			envelopes, err := p.mapper.Map(ctx, claimed)
+			if err != nil {
+				_, _ = p.store.MarkOutboxEventFailed(ctx, claimed.ID)
+				return err
+			}
+			for _, envelope := range envelopes {
+				if err := p.publisher.Publish(ctx, envelope); err != nil {
+					_, _ = p.store.MarkOutboxEventFailed(ctx, claimed.ID)
+					return err
+				}
+				log.Printf("published realtime event outbox_id=%s type=%s topic=%s", claimed.ID, envelope.Type, envelope.Topic)
+			}
+		}
 
 		if _, err := p.store.MarkOutboxEventProcessed(ctx, claimed.ID); err != nil {
 			_, _ = p.store.MarkOutboxEventFailed(ctx, claimed.ID)

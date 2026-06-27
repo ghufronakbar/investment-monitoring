@@ -582,11 +582,44 @@ Catatan implementasi Tahap 3:
 
 Tahap 4: Outbox delivery
 
-- [ ] Buat outbox event mapper.
-- [ ] Inject realtime publisher ke worker.
-- [ ] Publish event dari outbox processor.
-- [ ] Mark processed setelah publish sukses.
-- [ ] Tambah test mapper.
+- [x] Buat outbox event mapper.
+- [x] Inject realtime publisher ke worker.
+- [x] Publish event dari outbox processor.
+- [x] Mark processed setelah publish sukses.
+- [x] Tambah test mapper.
+
+Catatan implementasi Tahap 4:
+
+- Mapper tersedia di `internal/outbox/realtime.go`.
+- Worker membuat WebSocket realtime publisher dan inject ke `outbox.NewProcessor`.
+- Processor mengubah outbox event menjadi envelope realtime sebelum `MarkOutboxEventProcessed`.
+- Jika mapper atau publish gagal, event ditandai `FAILED`.
+- Unknown event type tidak dipublish dan tetap bisa diproses agar worker tidak stuck.
+- Payload JSON realtime domain memakai `DomainEventData`:
+
+```json
+{
+  "outboxEventId": "uuid",
+  "eventType": "TicketCreated",
+  "aggregateType": "ticket",
+  "aggregateId": "uuid",
+  "payload": {}
+}
+```
+
+Mapping event awal:
+
+```text
+ProgressSubmitted  -> progress.submitted              -> project.{projectId}.monitoring
+ProgressValidated  -> progress.validated              -> project.{projectId}.monitoring
+TicketCreated      -> ticket.created                  -> project.{projectId}.ticket, ticket.{ticketId}
+TicketAssigned     -> ticket.assigned                 -> project.{projectId}.ticket, ticket.{ticketId}
+TicketResolved     -> ticket.resolved                 -> project.{projectId}.ticket, ticket.{ticketId}
+TicketClosed       -> ticket.closed                   -> project.{projectId}.ticket, ticket.{ticketId}
+PaymentApproved    -> payment.approved                -> project.{projectId}.finance, payment.{paymentRequestId}
+PaymentPaid        -> payment.paid                    -> project.{projectId}.finance, payment.{paymentRequestId}
+MemberInvited      -> organization.member.invited     -> organization.{organizationId}, user.{userId}
+```
 
 Tahap 5: Docs dan hardening
 

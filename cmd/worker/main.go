@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"investment_monitoring/config"
+	websocket_service "investment_monitoring/internal/module/realtime/websocket/service"
+	token_service "investment_monitoring/internal/module/support/token/service"
 	"investment_monitoring/internal/outbox"
 	repository "investment_monitoring/internal/repository/entity"
 )
@@ -23,7 +25,17 @@ func main() {
 	defer db.Close()
 
 	store := repository.NewStore(db)
-	processor := outbox.NewProcessor(store)
+
+	rdb, err := config.ConnectRedis(cfg)
+	if err != nil {
+		log.Println("Redis unavailable, realtime outbox delivery to API instances is disabled:", err)
+	} else {
+		defer rdb.Close()
+	}
+
+	tokenSvc := token_service.NewService(cfg)
+	realtimePublisher := websocket_service.NewService(cfg, tokenSvc, store, rdb)
+	processor := outbox.NewProcessor(store, realtimePublisher)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

@@ -253,11 +253,11 @@ Bagian ini penting untuk jurnal karena menunjukkan evaluasi kritis terhadap sist
 
 ### 4.1 Real-time Monitoring Masih Bertahap
 
-Dokumen menyebut real-time monitoring. Backend sekarang sudah memiliki transport WebSocket minimal untuk connect, ping/pong, subscribe/unsubscribe, topic authorization, dan Redis Pub/Sub fanout. Namun delivery domain event secara penuh belum selesai karena integrasi outbox worker ke WebSocket masih tahap berikutnya.
+Dokumen menyebut real-time monitoring. Backend sekarang sudah memiliki transport WebSocket untuk connect, ping/pong, subscribe/unsubscribe, topic authorization, Redis Pub/Sub fanout, dan integrasi outbox worker ke WebSocket publisher.
 
 Cara menulis di jurnal:
 
-> Sistem mulai menyediakan fondasi real-time delivery melalui WebSocket transport, topic authorization, Redis Pub/Sub, dan outbox event. Untuk mencapai real-time monitoring penuh, sistem masih perlu menghubungkan outbox worker ke publisher realtime agar domain event dapat dikirim langsung ke client yang berhak.
+> Sistem menyediakan fondasi real-time delivery melalui WebSocket transport, topic authorization, Redis Pub/Sub, dan outbox worker. Domain event penting seperti progress, ticket, payment, dan member invitation dapat dipetakan ke topic realtime sehingga client yang berhak bisa menerima update tanpa polling manual.
 
 ### 4.2 Redis Sudah Mulai Digunakan
 
@@ -608,7 +608,7 @@ Rekomendasi:
 
 Alasan:
 
-Project mengklaim monitoring real-time. Baseline event-driven architecture sudah mulai dibuat melalui PostgreSQL outbox, transport WebSocket, topic authorization, dan Redis Pub/Sub fanout. Tahap yang belum selesai adalah delivery domain event dari outbox ke client melalui publisher realtime.
+Project mengklaim monitoring real-time. Baseline event-driven architecture sudah mulai dibuat melalui PostgreSQL outbox, transport WebSocket, topic authorization, Redis Pub/Sub fanout, dan delivery domain event dari outbox ke publisher realtime.
 
 Rekomendasi:
 
@@ -632,11 +632,10 @@ Rekomendasi:
 
 3. Worker
 
-   Worker awal sudah tersedia di `cmd/worker/main.go`. Saat ini worker baru membaca outbox dan mark processed sebagai fondasi. Tahap berikutnya adalah handler untuk:
+   Worker sudah tersedia di `cmd/worker/main.go`. Worker membaca outbox, memetakan event ke envelope realtime, publish ke WebSocket publisher, lalu mark processed jika sukses. Tahap berikutnya adalah handler tambahan untuk:
 
    - email;
    - notification;
-   - WebSocket update dari outbox event;
    - audit pipeline.
 
 4. Redis atau PostgreSQL Queue
@@ -887,7 +886,7 @@ Struktur tulisan yang disarankan:
 - Ticket log berperan sebagai event history yang memungkinkan status hambatan ditelusuri dari waktu ke waktu.
 - Approval bertingkat pada finance module merepresentasikan separation of duties antara auditor, executing agency, dan loan provider.
 - Dashboard berfungsi sebagai decision support layer yang menggabungkan progress fisik, serapan finansial, dan status hambatan.
-- Untuk mencapai real-time monitoring, sistem sudah memiliki fondasi outbox event, transport WebSocket, topic authorization, dan Redis Pub/Sub; tahap berikutnya adalah notification worker dan mapping event domain ke topic realtime.
+- Untuk mencapai real-time monitoring, sistem sudah memiliki fondasi outbox event, transport WebSocket, topic authorization, Redis Pub/Sub, dan mapping event domain ke topic realtime; tahap berikutnya adalah notification worker dan hardening observability realtime.
 
 ---
 
