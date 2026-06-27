@@ -599,13 +599,24 @@ Prioritas lanjutan:
 Test yang sudah ditambahkan mencakup:
 
 - rate limiter;
-- refresh token claims/revocation;
+- auth middleware, auth service, auth controller contract;
+- refresh token claims/rotation/revocation guard;
 - workflow FSM;
+- centralized policy layer;
+- audit service dan middleware;
 - WBS validation;
+- monitoring service;
+- tracker service;
+- finance service;
+- project service;
+- dashboard cache dan dashboard service;
+- uploader helper;
 - WebSocket connect/ping/subscribe;
 - WebSocket topic parser/authorization;
 - WebSocket local publish fallback;
-- outbox realtime mapper.
+- outbox payload, realtime mapper, dan processor;
+- project, finance, dan tracker controller contract test;
+- shared test assertion helper.
 
 Status verifikasi terakhir:
 
