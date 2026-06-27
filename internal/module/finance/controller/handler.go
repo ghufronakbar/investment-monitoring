@@ -2,6 +2,7 @@
 package finance_controller
 
 import (
+	"context"
 	"net/http"
 
 	"investment_monitoring/internal/http/internal_middleware"
@@ -16,12 +17,22 @@ import (
 	"github.com/google/uuid"
 )
 
+type service interface {
+	CreatePaymentRequest(context.Context, finance_service.CreatePaymentRequestParams) (finance_service.PaymentRequestReturn, error)
+	GetPaymentRequests(context.Context, finance_service.GetPaymentRequestsParams) ([]finance_service.PaymentRequestReturn, error)
+	GetPaymentRequestByID(context.Context, finance_service.GetPaymentRequestByIDParams) (finance_service.PaymentRequestReturn, error)
+	ApproveByAuditor(context.Context, finance_service.ApprovalParams) (finance_service.PaymentRequestReturn, error)
+	ApproveByAgency(context.Context, finance_service.ApprovalParams) (finance_service.PaymentRequestReturn, error)
+	Disburse(context.Context, finance_service.DisburseParams) (finance_service.PaymentRequestReturn, error)
+	GetPaymentSummary(context.Context, finance_service.GetPaymentSummaryParams) (finance_service.PaymentSummaryReturn, error)
+}
+
 type Handler struct {
-	financeSvc *finance_service.FinanceService
+	financeSvc service
 	policy     *policy.Service
 }
 
-func NewHandler(financeSvc *finance_service.FinanceService, store entity.Store) *Handler {
+func NewHandler(financeSvc service, store entity.Store) *Handler {
 	return &Handler{
 		financeSvc: financeSvc,
 		policy:     policy.NewService(store),

@@ -2,6 +2,7 @@
 package project_controller
 
 import (
+	"context"
 	"net/http"
 
 	"investment_monitoring/internal/http/internal_middleware"
@@ -16,12 +17,23 @@ import (
 	"github.com/google/uuid"
 )
 
+type service interface {
+	Create(context.Context, project_service.CreateProjectParams, uuid.UUID) (project_service.CreateProjectReturn, error)
+	ListAccessible(context.Context, uuid.UUID) ([]project_service.ProjectReturn, error)
+	GetByID(context.Context, project_service.GetProjectParams) (project_service.ProjectDetailReturn, error)
+	ConfigureSettings(context.Context, project_service.ConfigureSettingsParams) (project_service.ProjectSettingsReturn, error)
+	AssignExecutingAgency(context.Context, project_service.AssignExecutingAgencyParams) (project_service.AssignmentReturn, error)
+	AssignVendor(context.Context, project_service.AssignVendorParams) (project_service.AssignmentReturn, error)
+	AssignAuditor(context.Context, project_service.AssignAuditorParams) (project_service.AssignmentReturn, error)
+	AssignGovPartners(context.Context, project_service.AssignGovPartnersParams) (project_service.AssignmentReturn, error)
+}
+
 type Handler struct {
-	svc    *project_service.ProjectService
+	svc    service
 	policy *policy.Service
 }
 
-func NewHandler(svc *project_service.ProjectService, store entity.Store) *Handler {
+func NewHandler(svc service, store entity.Store) *Handler {
 	return &Handler{
 		svc:    svc,
 		policy: policy.NewService(store),

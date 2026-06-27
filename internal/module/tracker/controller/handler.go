@@ -2,6 +2,7 @@
 package tracker_controller
 
 import (
+	"context"
 	"net/http"
 
 	"investment_monitoring/internal/http/internal_middleware"
@@ -16,12 +17,21 @@ import (
 	"github.com/google/uuid"
 )
 
+type service interface {
+	CreateTicket(context.Context, tracker_service.CreateTicketParams) (tracker_service.TicketReturn, error)
+	GetTickets(context.Context, tracker_service.GetTicketsParams) ([]tracker_service.TicketReturn, error)
+	GetTicketByID(context.Context, tracker_service.GetTicketByIDParams) (tracker_service.TicketReturn, error)
+	AssignTicket(context.Context, tracker_service.AssignTicketParams) (tracker_service.TicketReturn, error)
+	AddLog(context.Context, tracker_service.AddTicketLogParams) (tracker_service.TicketLogReturn, error)
+	CloseTicket(context.Context, tracker_service.CloseTicketParams) (tracker_service.TicketReturn, error)
+}
+
 type Handler struct {
-	trackerSvc *tracker_service.TrackerService
+	trackerSvc service
 	policy     *policy.Service
 }
 
-func NewHandler(trackerSvc *tracker_service.TrackerService, store entity.Store) *Handler {
+func NewHandler(trackerSvc service, store entity.Store) *Handler {
 	return &Handler{
 		trackerSvc: trackerSvc,
 		policy:     policy.NewService(store),

@@ -59,6 +59,10 @@ Status eksekusi saat ini:
 - menambahkan hash utility test;
 - menambahkan WBS edge tests untuk empty tree, orphan task, dan sibling overweight;
 - menambahkan policy tests tambahan untuk dashboard/monitoring/tracker/finance view, pending validations, create payment request, dan close ticket.
+- refactor project, finance, dan tracker controller agar dependency service berupa interface lokal;
+- menambahkan project controller contract tests untuk list, get detail, create, validation error, dan assign vendor;
+- menambahkan finance controller contract tests untuk summary, create payment request, validation error, dan auditor approval;
+- menambahkan tracker controller contract tests untuk list ticket, create ticket, validation error, assign ticket, dan add log.
 ```
 
 Catatan:
@@ -931,14 +935,14 @@ Target realistis:
 - [x] WBS edge case tambahan.
 - [x] Tracker service tests.
 - [x] SLA service tests.
-- [ ] Tracker controller tests.
+- [x] Tracker controller tests.
 
 ### Sprint 4: Finance dan Project
 
 - [x] Finance service tests.
-- [ ] Finance controller tests.
+- [x] Finance controller tests.
 - [x] Project service tests.
-- [ ] Project controller tests.
+- [x] Project controller tests.
 
 ### Sprint 5: Support, Outbox, Realtime
 
@@ -960,7 +964,7 @@ Unit test project dianggap layak jika:
 - [x] workflow transition seluruh invalid path tertutup;
 - [x] security-sensitive auth/token/rate-limit/upload tertutup;
 - [x] WebSocket topic authorization dan outbox mapper tertutup;
-- [ ] frontend-facing response contract penting punya handler test;
+- [x] frontend-facing response contract penting punya handler test;
 - [x] tidak ada test flaky;
 - [x] tidak ada secret/token tercetak di log test;
 - [x] test plan ini diperbarui saat fitur baru dibuat.
