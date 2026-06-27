@@ -32,6 +32,11 @@ type GetTasksParams struct {
 	UserID    uuid.UUID
 }
 
+type ValidateWBSParams struct {
+	ProjectID uuid.UUID
+	UserID    uuid.UUID
+}
+
 type DeleteTaskParams struct {
 	TaskID uuid.UUID
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"time"
 
 	"investment_monitoring/config"
 	"investment_monitoring/internal/audit"
@@ -52,19 +53,8 @@ func (s *MonitoringService) CreateTask(ctx context.Context, params CreateTaskPar
 		return result, errs.NewInternalServerError(err)
 	}
 
-	// Validate parent deadline if parent exists
-	if params.ParentID != nil {
-		parent, err := s.store.GetTaskByID(ctx, *params.ParentID)
-		if err == sql.ErrNoRows {
-			return result, errs.NewNotFound("PARENT_TASK_NOT_FOUND")
-		}
-		if err != nil {
-			return result, errs.NewInternalServerError(err)
-		}
-		// Child deadline cannot exceed parent deadline
-		if params.Deadline.After(parent.Deadline) {
-			return result, errs.NewBadRequest("CHILD_DEADLINE_EXCEEDS_PARENT")
-		}
+	if err := s.validateTaskMutation(ctx, contract.ID, nil, params.ParentID, params.Deadline, params.Weight); err != nil {
+		return result, err
 	}
 
 	// Create task
@@ -288,18 +278,8 @@ func (s *MonitoringService) UpdateTask(ctx context.Context, params UpdateTaskPar
 		return result, errs.NewInternalServerError(err)
 	}
 
-	// Validate parent deadline if parent exists
-	if params.ParentID != nil {
-		parent, err := s.store.GetTaskByID(ctx, *params.ParentID)
-		if err == sql.ErrNoRows {
-			return result, errs.NewNotFound("PARENT_TASK_NOT_FOUND")
-		}
-		if err != nil {
-			return result, errs.NewInternalServerError(err)
-		}
-		if params.Deadline.After(parent.Deadline) {
-			return result, errs.NewBadRequest("CHILD_DEADLINE_EXCEEDS_PARENT")
-		}
+	if err := s.validateTaskMutation(ctx, existing.ContractID, &params.TaskID, params.ParentID, params.Deadline, params.Weight); err != nil {
+		return result, err
 	}
 
 	updateParams := entity.UpdateTaskParams{
@@ -366,6 +346,271 @@ func (s *MonitoringService) DeleteTask(ctx context.Context, params DeleteTaskPar
 	_ = s.invalidateDashboardByContractID(ctx, task.ContractID)
 
 	return nil
+}
+
+func (s *MonitoringService) ValidateWBS(ctx context.Context, params ValidateWBSParams) (WBSValidationReturn, error) {
+	contract, err := s.store.GetContractByProjectID(ctx, params.ProjectID)
+	if err == sql.ErrNoRows {
+		return WBSValidationReturn{}, errs.NewNotFound("CONTRACT_NOT_FOUND")
+	}
+	if err != nil {
+		return WBSValidationReturn{}, errs.NewInternalServerError(err)
+	}
+
+	tasks, err := s.store.GetTasksByContractID(ctx, contract.ID)
+	if err != nil {
+		return WBSValidationReturn{}, errs.NewInternalServerError(err)
+	}
+
+	validation := validateWBSNodes(mapTaskRowsToWBSNodes(tasks))
+	return WBSValidationReturn{
+		IsValid:         len(validation.Errors) == 0,
+		TotalRootWeight: validation.TotalRootWeight,
+		TotalLeafWeight: validation.TotalLeafWeight,
+		Errors:          validation.Errors,
+	}, nil
+}
+
+type wbsNode struct {
+	ID       uuid.UUID
+	ParentID uuid.NullUUID
+	Weight   int
+}
+
+type wbsValidation struct {
+	TotalRootWeight int
+	TotalLeafWeight int
+	Errors          []string
+}
+
+func (s *MonitoringService) validateTaskMutation(ctx context.Context, contractID uuid.UUID, taskID *uuid.UUID, parentID *uuid.UUID, deadline time.Time, weight int) error {
+	if parentID != nil {
+		if taskID != nil && *parentID == *taskID {
+			return errs.NewBadRequest("TASK_CANNOT_PARENT_ITSELF")
+		}
+
+		parent, err := s.store.GetTaskByID(ctx, *parentID)
+		if err == sql.ErrNoRows {
+			return errs.NewNotFound("PARENT_TASK_NOT_FOUND")
+		}
+		if err != nil {
+			return errs.NewInternalServerError(err)
+		}
+		if parent.ContractID != contractID {
+			return errs.NewBadRequest("PARENT_TASK_NOT_IN_CONTRACT")
+		}
+		if deadline.After(parent.Deadline) {
+			return errs.NewBadRequest("CHILD_DEADLINE_EXCEEDS_PARENT")
+		}
+		if taskID != nil {
+			hasCycle, err := s.wouldCreateCycle(ctx, *taskID, *parentID)
+			if err != nil {
+				return err
+			}
+			if hasCycle {
+				return errs.NewBadRequest("WBS_CYCLE_DETECTED")
+			}
+		}
+	}
+
+	if taskID != nil {
+		children, err := s.store.GetChildTasks(ctx, uuid.NullUUID{UUID: *taskID, Valid: true})
+		if err != nil {
+			return errs.NewInternalServerError(err)
+		}
+		for _, child := range children {
+			if child.Deadline.After(deadline) {
+				return errs.NewBadRequest("CHILD_DEADLINE_EXCEEDS_PARENT")
+			}
+		}
+	}
+
+	tasks, err := s.store.GetTasksByContractID(ctx, contractID)
+	if err != nil {
+		return errs.NewInternalServerError(err)
+	}
+
+	nodes := mapTaskRowsToWBSNodes(tasks)
+	mutatedID := uuid.New()
+	if taskID != nil {
+		mutatedID = *taskID
+	}
+
+	parent := uuid.NullUUID{}
+	if parentID != nil {
+		parent = uuid.NullUUID{UUID: *parentID, Valid: true}
+	}
+	nodes = upsertWBSNode(nodes, wbsNode{
+		ID:       mutatedID,
+		ParentID: parent,
+		Weight:   weight,
+	})
+
+	validation := validateWBSNodes(nodes)
+	for _, code := range validation.Errors {
+		switch code {
+		case "TOTAL_ROOT_WEIGHT_EXCEEDS_100", "TOTAL_LEAF_WEIGHT_EXCEEDS_100", "SIBLING_WEIGHT_EXCEEDS_100", "WBS_CYCLE_DETECTED", "ORPHAN_TASK":
+			return errs.NewBadRequest(code)
+		}
+	}
+	return nil
+}
+
+func (s *MonitoringService) wouldCreateCycle(ctx context.Context, taskID, parentID uuid.UUID) (bool, error) {
+	currentID := parentID
+	visited := make(map[uuid.UUID]bool)
+
+	for {
+		if currentID == taskID {
+			return true, nil
+		}
+		if visited[currentID] {
+			return true, nil
+		}
+		visited[currentID] = true
+
+		current, err := s.store.GetTaskByID(ctx, currentID)
+		if err == sql.ErrNoRows {
+			return false, errs.NewNotFound("PARENT_TASK_NOT_FOUND")
+		}
+		if err != nil {
+			return false, errs.NewInternalServerError(err)
+		}
+		if !current.ParentID.Valid {
+			return false, nil
+		}
+		currentID = current.ParentID.UUID
+	}
+}
+
+func mapTaskRowsToWBSNodes(tasks []entity.TaskItem) []wbsNode {
+	nodes := make([]wbsNode, 0, len(tasks))
+	for _, task := range tasks {
+		nodes = append(nodes, wbsNode{
+			ID:       task.ID,
+			ParentID: task.ParentID,
+			Weight:   int(task.Weight),
+		})
+	}
+	return nodes
+}
+
+func upsertWBSNode(nodes []wbsNode, node wbsNode) []wbsNode {
+	for i := range nodes {
+		if nodes[i].ID == node.ID {
+			nodes[i] = node
+			return nodes
+		}
+	}
+	return append(nodes, node)
+}
+
+func validateWBSNodes(nodes []wbsNode) wbsValidation {
+	validation := wbsValidation{Errors: []string{}}
+	if len(nodes) == 0 {
+		validation.Errors = append(validation.Errors, "WBS_EMPTY")
+		return validation
+	}
+
+	nodeByID := make(map[uuid.UUID]wbsNode, len(nodes))
+	childCount := make(map[uuid.UUID]int)
+	siblingWeight := make(map[uuid.UUID]int)
+	rootGroupID := uuid.Nil
+
+	for _, node := range nodes {
+		nodeByID[node.ID] = node
+	}
+
+	for _, node := range nodes {
+		if node.ParentID.Valid {
+			if _, ok := nodeByID[node.ParentID.UUID]; !ok {
+				validation.Errors = appendUnique(validation.Errors, "ORPHAN_TASK")
+				continue
+			}
+			childCount[node.ParentID.UUID]++
+			siblingWeight[node.ParentID.UUID] += node.Weight
+			continue
+		}
+		validation.TotalRootWeight += node.Weight
+		siblingWeight[rootGroupID] += node.Weight
+	}
+
+	for _, node := range nodes {
+		if childCount[node.ID] == 0 {
+			validation.TotalLeafWeight += node.Weight
+		}
+	}
+
+	if validation.TotalRootWeight != 100 {
+		validation.Errors = appendUnique(validation.Errors, "TOTAL_ROOT_WEIGHT_NOT_100")
+	}
+	if validation.TotalRootWeight > 100 {
+		validation.Errors = appendUnique(validation.Errors, "TOTAL_ROOT_WEIGHT_EXCEEDS_100")
+	}
+	if validation.TotalLeafWeight != 100 {
+		validation.Errors = appendUnique(validation.Errors, "TOTAL_LEAF_WEIGHT_NOT_100")
+	}
+	if validation.TotalLeafWeight > 100 {
+		validation.Errors = appendUnique(validation.Errors, "TOTAL_LEAF_WEIGHT_EXCEEDS_100")
+	}
+	for _, total := range siblingWeight {
+		if total > 100 {
+			validation.Errors = appendUnique(validation.Errors, "SIBLING_WEIGHT_EXCEEDS_100")
+			break
+		}
+	}
+	if hasWBSCycle(nodes) {
+		validation.Errors = appendUnique(validation.Errors, "WBS_CYCLE_DETECTED")
+	}
+
+	return validation
+}
+
+func hasWBSCycle(nodes []wbsNode) bool {
+	nodeByID := make(map[uuid.UUID]wbsNode, len(nodes))
+	for _, node := range nodes {
+		nodeByID[node.ID] = node
+	}
+
+	visited := make(map[uuid.UUID]bool)
+	visiting := make(map[uuid.UUID]bool)
+
+	var visit func(uuid.UUID) bool
+	visit = func(id uuid.UUID) bool {
+		if visiting[id] {
+			return true
+		}
+		if visited[id] {
+			return false
+		}
+		node, ok := nodeByID[id]
+		if !ok {
+			return false
+		}
+		visiting[id] = true
+		if node.ParentID.Valid && visit(node.ParentID.UUID) {
+			return true
+		}
+		visiting[id] = false
+		visited[id] = true
+		return false
+	}
+
+	for _, node := range nodes {
+		if visit(node.ID) {
+			return true
+		}
+	}
+	return false
+}
+
+func appendUnique(values []string, value string) []string {
+	for _, existing := range values {
+		if existing == value {
+			return values
+		}
+	}
+	return append(values, value)
 }
 
 // ===== PROGRESS LOGS =====

@@ -174,8 +174,8 @@ Nilai IT yang penting:
 
 Catatan improvement:
 
-- Validasi total WBS weight perlu diperkuat. Dokumen menyebut total 100%, tetapi kode saat ini baru menghitung total root weight dan belum tampak memblokir total lebih/kurang dari 100.
-- Update task perlu mencegah cycle pada parent-child tree.
+- Validasi integritas WBS sudah diperkuat di service monitoring. Sistem sekarang mengecek root weight, leaf weight, sibling weight, parent satu contract, self-parent, cycle, orphan task, child deadline terhadap parent, dan perubahan deadline parent terhadap child yang sudah ada.
+- Endpoint `GET /monitoring/project/{projectId}/wbs/validation` dapat dipakai untuk inspeksi struktur WBS sebelum data dipakai sebagai dasar analisis progress.
 - Planned S-Curve di endpoint monitoring masih sederhana, sedangkan dashboard support sudah lebih matang dengan weekly data points.
 - Perlu aturan apakah progress bersifat cumulative atau incremental. Saat ini query mengambil `MAX` percentage per task, namun jurnal perlu menjelaskan model yang dipilih.
 
@@ -437,19 +437,30 @@ Rekomendasi:
 
 2. WBS Weight Constraint
 
-   Buat rule:
+   Status: baseline sudah diimplementasikan di service monitoring.
 
-   - total root task weight = 100;
-   - atau total leaf task weight = 100;
-   - tentukan satu model secara eksplisit.
+   Rule yang sudah ada:
 
-   Jika ingin lebih ketat, buat validation endpoint:
+   - total root task weight dan total leaf task weight dihitung eksplisit;
+   - total kurang dari 100 boleh sebagai draft, tetapi endpoint validasi menandai WBS belum valid;
+   - total lebih dari 100 diblokir saat create/update task;
+   - sibling group tidak boleh melebihi 100;
+   - validation endpoint tersedia di:
 
-   - `GET /monitoring/project/{projectId}/wbs/validation`
+     `GET /monitoring/project/{projectId}/wbs/validation`
+
+   Tahap berikutnya jika ingin lebih ketat adalah membuat status finalisasi WBS, misalnya `DRAFT -> LOCKED`, sehingga WBS hanya dapat dipakai untuk baseline kontrak setelah total bobot tepat 100.
 
 3. Prevent Tree Cycle
 
-   Saat update parent task, cegah task menjadi child dari descendant-nya sendiri.
+   Status: sudah diimplementasikan di service monitoring.
+
+   Saat update parent task, sistem menolak:
+
+   - task menjadi parent dirinya sendiri;
+   - parent dari contract berbeda;
+   - parent yang merupakan descendant dari task tersebut;
+   - struktur cycle yang terdeteksi dari parent chain.
 
 4. Database Constraints dan Indexes
 

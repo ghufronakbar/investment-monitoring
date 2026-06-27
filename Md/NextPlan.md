@@ -773,40 +773,73 @@ Test penting:
 
 ## 13. WBS Integrity Validation
 
-### Status Saat Ini
+### Status Implementasi
 
-Task WBS sudah punya `weight`, `parent_id`, dan deadline. Namun belum ada validasi kuat bahwa total bobot tepat 100% atau tree bebas cycle.
+Task WBS sekarang sudah memiliki validasi integritas di level service dan endpoint inspeksi khusus. Validasi ini menjaga struktur tree agar tidak rusak, bobot WBS tetap terkendali, dan progress hanya bisa dilaporkan pada task leaf.
 
-### Yang Perlu Dibuat
-
-Rules:
-
-- total leaf weight atau root weight harus 100%;
-- child deadline tidak boleh melebihi parent deadline;
-- parent tidak boleh descendant dari task itu sendiri;
-- progress hanya boleh pada leaf task.
-
-Endpoint opsional:
+Endpoint:
 
 ```text
 GET /monitoring/project/{projectId}/wbs/validation
 ```
 
-Return:
+Response:
 
 ```json
 {
   "isValid": false,
-  "totalWeight": 87,
-  "errors": ["TOTAL_WEIGHT_NOT_100"]
+  "totalRootWeight": 80,
+  "totalLeafWeight": 95,
+  "errors": [
+    "TOTAL_ROOT_WEIGHT_NOT_100",
+    "TOTAL_LEAF_WEIGHT_NOT_100"
+  ]
 }
 ```
+
+Rules yang sudah diterapkan:
+
+- endpoint validasi menghitung total root weight dan total leaf weight;
+- endpoint validasi memberi error jika total root atau leaf tidak 100%;
+- create/update task diblokir jika total root, total leaf, atau sibling group melebihi 100%;
+- child deadline tidak boleh melebihi parent deadline;
+- update deadline parent tidak boleh membuat deadline child yang sudah ada melewati deadline parent;
+- parent task harus berada dalam contract yang sama;
+- task tidak boleh menjadi parent dirinya sendiri;
+- parent tidak boleh descendant dari task itu sendiri;
+- tree cycle dideteksi dan ditolak;
+- orphan task dideteksi sebagai invalid;
+- progress hanya boleh pada leaf task, sesuai rule yang sudah ada di submit progress.
+
+Error code utama:
+
+```text
+TASK_CANNOT_PARENT_ITSELF
+PARENT_TASK_NOT_FOUND
+PARENT_TASK_NOT_IN_CONTRACT
+CHILD_DEADLINE_EXCEEDS_PARENT
+WBS_CYCLE_DETECTED
+ORPHAN_TASK
+TOTAL_ROOT_WEIGHT_NOT_100
+TOTAL_ROOT_WEIGHT_EXCEEDS_100
+TOTAL_LEAF_WEIGHT_NOT_100
+TOTAL_LEAF_WEIGHT_EXCEEDS_100
+SIBLING_WEIGHT_EXCEEDS_100
+```
+
+Catatan desain:
+
+- Draft WBS dengan total kurang dari 100 masih boleh disimpan agar user bisa membangun WBS bertahap.
+- Kondisi kurang dari 100 dilaporkan oleh endpoint validasi melalui `TOTAL_ROOT_WEIGHT_NOT_100` atau `TOTAL_LEAF_WEIGHT_NOT_100`.
+- Kondisi lebih dari 100 langsung diblokir pada create/update task karena berisiko membuat planned progress dan S-Curve tidak valid.
+- Validasi unit untuk helper WBS ada di `internal/module/monitoring/service/wbs_validation_test.go`.
 
 ### Manfaat
 
 - S-Curve lebih valid.
 - Mencegah data WBS rusak.
 - Memperkuat data integrity.
+- Memberi bahan pembahasan jurnal tentang tree integrity, domain validation, dan consistency rule pada backend.
 
 ---
 

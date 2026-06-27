@@ -37,6 +37,7 @@ func (h *Handler) Routes() chi.Router {
 		r.Get("/task", h.GetTasks)
 		r.Post("/task", h.CreateTask)
 		r.Get("/task/leaf", h.GetLeafTasks)
+		r.Get("/wbs/validation", h.ValidateWBS)
 
 		// Progress log routes
 		r.Get("/log", h.GetProgressLogs)
@@ -165,6 +166,38 @@ func (h *Handler) GetLeafTasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.OK(w, r, "SUCCESS_GET_LEAF_TASKS", res)
+}
+
+// ValidateWBS handles GET /monitoring/project/{projectId}/wbs/validation
+func (h *Handler) ValidateWBS(w http.ResponseWriter, r *http.Request) {
+	userClaims, err := internal_middleware.GetUserFromContext(r.Context())
+	if err != nil {
+		response.Error(w, r, errs.NewUnauthorized("AUTHENTICATION_REQUIRED"), nil)
+		return
+	}
+
+	projectIdStr := chi.URLParam(r, "projectId")
+	projectId, err := uuid.Parse(projectIdStr)
+	if err != nil {
+		response.Error(w, r, errs.NewValidationFailed(map[string]string{"projectId": "Invalid UUID"}), nil)
+		return
+	}
+
+	if err := h.policy.CanViewMonitoringProject(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
+
+	res, err := h.svc.ValidateWBS(r.Context(), monitoring_service.ValidateWBSParams{
+		ProjectID: projectId,
+		UserID:    userClaims.ID,
+	})
+	if err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
+
+	response.OK(w, r, "SUCCESS_VALIDATE_WBS", res)
 }
 
 // GetTaskByID handles GET /monitoring/task/{taskId}

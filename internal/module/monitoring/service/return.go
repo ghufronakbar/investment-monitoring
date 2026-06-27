@@ -30,6 +30,13 @@ type TaskListReturn struct {
 	TotalWeight int          `json:"totalWeight"`
 }
 
+type WBSValidationReturn struct {
+	IsValid         bool     `json:"isValid"`
+	TotalRootWeight int      `json:"totalRootWeight"`
+	TotalLeafWeight int      `json:"totalLeafWeight"`
+	Errors          []string `json:"errors"`
+}
+
 // ===== PROGRESS LOGS =====
 
 type ProgressLogReturn struct {
