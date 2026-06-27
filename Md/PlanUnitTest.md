@@ -50,6 +50,15 @@ Status eksekusi saat ini:
 - menambahkan monitoring service tests untuk WBS validation, leaf task mapping, delete task guard, dan parent validation;
 - menambahkan tracker service tests untuk ticket list/detail mapping dan assign ticket validation;
 - menambahkan dashboard service tests untuk S-Curve, stats, dan domain error mapping.
+- menambahkan auth service tests untuk check email, login, set password, refresh token, logout/revoke-all guard, dan helper key/TTL refresh token;
+- refactor auth controller agar bergantung interface lokal sehingga bisa dibuat handler contract test tanpa DB;
+- menambahkan auth controller contract tests untuk check email, login, validation error, dan service error;
+- menambahkan auth middleware tests untuk bearer token, missing/invalid token, context claims, dan token extraction;
+- menambahkan rate limiter tests untuk key generation, body restore, case-insensitive email, window reset, dan client IP priority;
+- menambahkan outbox processor tests untuk publish success, publish failure, dan skip event yang sudah diklaim;
+- menambahkan hash utility test;
+- menambahkan WBS edge tests untuk empty tree, orphan task, dan sibling overweight;
+- menambahkan policy tests tambahan untuk dashboard/monitoring/tracker/finance view, pending validations, create payment request, dan close ticket.
 ```
 
 Catatan:
@@ -911,15 +920,15 @@ Target realistis:
 ### Sprint 2: Policy dan Security
 
 - [x] Policy layer tests.
-- [ ] Auth service tests.
-- [ ] Auth controller tests.
-- [ ] Auth middleware tests.
-- [ ] Rate limiter tambahan.
+- [x] Auth service tests.
+- [x] Auth controller tests.
+- [x] Auth middleware tests.
+- [x] Rate limiter tambahan.
 
 ### Sprint 3: Monitoring dan Tracker
 
 - [x] Monitoring service tests.
-- [ ] WBS edge case tambahan.
+- [x] WBS edge case tambahan.
 - [x] Tracker service tests.
 - [x] SLA service tests.
 - [ ] Tracker controller tests.
@@ -937,7 +946,7 @@ Target realistis:
 - [x] Dashboard cache tests.
 - [x] Dashboard service tests.
 - [x] Outbox payload dan realtime mapper tests.
-- [ ] Outbox processor tests.
+- [x] Outbox processor tests.
 - [x] Realtime hardening tests.
 - [x] Utility/package tests.
 
@@ -947,10 +956,10 @@ Unit test project dianggap layak jika:
 
 - [x] `go test ./...` pass tanpa external DB/Redis/network;
 - [x] service high-risk punya test success dan failure path;
-- [ ] policy layer seluruh rule utama tertutup;
+- [x] policy layer seluruh rule utama tertutup;
 - [x] workflow transition seluruh invalid path tertutup;
-- [ ] security-sensitive auth/token/rate-limit/upload tertutup;
-- [ ] WebSocket topic authorization dan outbox mapper tertutup;
+- [x] security-sensitive auth/token/rate-limit/upload tertutup;
+- [x] WebSocket topic authorization dan outbox mapper tertutup;
 - [ ] frontend-facing response contract penting punya handler test;
 - [x] tidak ada test flaky;
 - [x] tidak ada secret/token tercetak di log test;

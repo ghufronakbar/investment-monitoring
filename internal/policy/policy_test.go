@@ -403,6 +403,90 @@ func TestPaymentPolicies(t *testing.T) {
 	}
 }
 
+func TestAdditionalProjectViewAndFinancePolicies(t *testing.T) {
+	userID := uuid.New()
+	projectID := uuid.New()
+
+	tests := []struct {
+		name    string
+		access  entity.GetUserProjectAccessRow
+		call    func(*Service) error
+		wantErr string
+	}{
+		{
+			name:   "view monitoring project allows participant",
+			access: accessRow(projectID, entity.OrganizationRoleEnumCONTRACTOR, entity.MemberRoleEnumMEMBER, uuid.New()),
+			call: func(s *Service) error {
+				return s.CanViewMonitoringProject(context.Background(), userID, projectID)
+			},
+		},
+		{
+			name:   "view tracker project allows participant",
+			access: accessRow(projectID, entity.OrganizationRoleEnumGOVPARTNER, entity.MemberRoleEnumMEMBER, uuid.New()),
+			call: func(s *Service) error {
+				return s.CanViewTrackerProject(context.Background(), userID, projectID)
+			},
+		},
+		{
+			name:   "view finance project allows participant",
+			access: accessRow(projectID, entity.OrganizationRoleEnumLOANPROVIDER, entity.MemberRoleEnumMEMBER, uuid.New()),
+			call: func(s *Service) error {
+				return s.CanViewFinanceProject(context.Background(), userID, projectID)
+			},
+		},
+		{
+			name:   "view dashboard project allows participant",
+			access: accessRow(projectID, entity.OrganizationRoleEnumEXECUTINGAGENCY, entity.MemberRoleEnumADMIN, uuid.New()),
+			call: func(s *Service) error {
+				return s.CanViewDashboardProject(context.Background(), userID, projectID)
+			},
+		},
+		{
+			name:   "pending validations require auditor",
+			access: accessRow(projectID, entity.OrganizationRoleEnumCONTRACTOR, entity.MemberRoleEnumMEMBER, uuid.New()),
+			call: func(s *Service) error {
+				return s.CanViewPendingValidations(context.Background(), userID, projectID)
+			},
+			wantErr: "AUDITOR_REQUIRED",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.call(NewService(&fakeStore{access: tt.access}))
+			assertPolicyError(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestCreatePaymentRequestPolicy(t *testing.T) {
+	userID := uuid.New()
+	projectID := uuid.New()
+
+	t.Run("allows contractor participant", func(t *testing.T) {
+		store := &fakeStore{access: accessRow(projectID, entity.OrganizationRoleEnumCONTRACTOR, entity.MemberRoleEnumMEMBER, uuid.New())}
+		_, err := NewService(store).CanCreatePaymentRequest(context.Background(), userID, projectID)
+		assertPolicyError(t, err, "")
+	})
+
+	t.Run("rejects non contractor", func(t *testing.T) {
+		store := &fakeStore{access: accessRow(projectID, entity.OrganizationRoleEnumEXECUTINGAGENCY, entity.MemberRoleEnumADMIN, uuid.New())}
+		_, err := NewService(store).CanCreatePaymentRequest(context.Background(), userID, projectID)
+		assertPolicyError(t, err, "CONTRACTOR_REQUIRED")
+	})
+}
+
+func TestCanCloseTicketDelegatesAssignPolicy(t *testing.T) {
+	userID := uuid.New()
+	projectID := uuid.New()
+	contractID := uuid.New()
+	ticketID := uuid.New()
+	store := ticketStore(projectID, contractID, ticketID, uuid.Nil, entity.OrganizationRoleEnumEXECUTINGAGENCY, entity.MemberRoleEnumADMIN, uuid.New())
+
+	_, err := NewService(store).CanCloseTicket(context.Background(), userID, ticketID)
+	assertPolicyError(t, err, "")
+}
+
 func TestUserHasOrgRolePropagatesStoreError(t *testing.T) {
 	svc := NewService(&fakeStore{membershipErr: errors.New("db down")})
 

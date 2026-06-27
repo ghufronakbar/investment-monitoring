@@ -2,6 +2,7 @@
 package auth_controller
 
 import (
+	"context"
 	"net/http"
 
 	auth_service "investment_monitoring/internal/module/iam/auth/service"
@@ -11,11 +12,20 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type Handler struct {
-	svc *auth_service.AuthService
+type service interface {
+	CheckEmail(context.Context, auth_service.CheckEmailParams) (auth_service.CheckEmailReturn, error)
+	Login(context.Context, auth_service.LoginParams) (auth_service.LoginReturn, error)
+	SetPassword(context.Context, auth_service.SetPasswordParams) (auth_service.SetPasswordReturn, error)
+	RefreshToken(context.Context, auth_service.RefreshTokenParams) (auth_service.RefreshTokenReturn, error)
+	Logout(context.Context, auth_service.LogoutParams) (auth_service.LogoutReturn, error)
+	RevokeAll(context.Context, auth_service.RevokeAllParams) (auth_service.RevokeAllReturn, error)
 }
 
-func NewHandler(svc *auth_service.AuthService) *Handler {
+type Handler struct {
+	svc service
+}
+
+func NewHandler(svc service) *Handler {
 	return &Handler{svc: svc}
 }
 

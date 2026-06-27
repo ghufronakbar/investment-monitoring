@@ -54,6 +54,30 @@ func TestValidateWBSNodesDetectsCycle(t *testing.T) {
 	}
 }
 
+func TestValidateWBSNodesDetectsEmptySiblingAndOrphanCases(t *testing.T) {
+	if validation := validateWBSNodes(nil); !hasValidationError(validation.Errors, "WBS_EMPTY") {
+		t.Fatalf("expected WBS_EMPTY, got %v", validation.Errors)
+	}
+
+	parent := uuid.New()
+	validation := validateWBSNodes([]wbsNode{
+		{ID: uuid.New(), ParentID: uuid.NullUUID{UUID: parent, Valid: true}, Weight: 10},
+	})
+	if !hasValidationError(validation.Errors, "ORPHAN_TASK") {
+		t.Fatalf("expected ORPHAN_TASK, got %v", validation.Errors)
+	}
+
+	parent = uuid.New()
+	validation = validateWBSNodes([]wbsNode{
+		{ID: parent, Weight: 100},
+		{ID: uuid.New(), ParentID: uuid.NullUUID{UUID: parent, Valid: true}, Weight: 60},
+		{ID: uuid.New(), ParentID: uuid.NullUUID{UUID: parent, Valid: true}, Weight: 50},
+	})
+	if !hasValidationError(validation.Errors, "SIBLING_WEIGHT_EXCEEDS_100") {
+		t.Fatalf("expected SIBLING_WEIGHT_EXCEEDS_100, got %v", validation.Errors)
+	}
+}
+
 func validationIsValid(validation wbsValidation) bool {
 	return len(validation.Errors) == 0
 }
