@@ -93,13 +93,14 @@ Repository memiliki `ExecTx` untuk transaksi database. Sudah digunakan pada bebe
 - Assign government partners dengan delete old + insert new.
 - Create ticket + create initial ticket log.
 - Create organization + create user + create organization member.
+- Create payment request + audit log dengan contract row lock.
 
 Ini bagus karena workflow penting tidak meninggalkan data setengah jadi.
 
 Improvisasi:
 
-- Tambahkan transaction isolation atau locking pada flow finansial yang rawan race condition.
-- Payment request perlu proteksi concurrency agar dua request paralel tidak bisa melewati batas available amount.
+- Flow create payment request sudah memakai row lock pada contract untuk mengurangi race condition.
+- Tambahkan concurrency/integration test agar proteksi tersebut bisa dibuktikan secara otomatis.
 - Progress validation perlu idempotency atau unique constraint sudah ada, tetapi error handling bisa dibuat lebih eksplisit.
 
 ---
@@ -220,7 +221,7 @@ Nilai IT:
 Catatan improvement:
 
 - Disbursement service perlu validasi eksplisit bahwa org yang membayar adalah loan provider participant dalam contract, bukan hanya dilakukan di controller.
-- Payment request creation rawan race condition jika dua request paralel dibuat bersamaan. Perlu transaction + row lock pada contract atau advisory lock.
+- Payment request creation sudah memakai transaction + row lock pada contract. Sisa peningkatan adalah concurrency test dan observability lock wait time.
 - Rejection reason/comment belum tampak sebagai field utama. Untuk audit, rejection harus memiliki alasan.
 - Digital signature bisa ditingkatkan dari sekadar user/org/timestamp menjadi signed approval record.
 
@@ -429,7 +430,7 @@ Rekomendasi:
 
 1. Payment Request Atomicity
 
-   Saat create payment request:
+   Saat create payment request, baseline sudah dibuat:
 
    - buka transaction;
    - lock contract row `FOR UPDATE`;
@@ -437,7 +438,7 @@ Rekomendasi:
    - insert payment request;
    - commit.
 
-   Tujuannya mencegah double spending pada available amount.
+   Tujuannya mencegah double spending pada available amount. Tahap berikutnya adalah membuat concurrency test untuk membuktikan hanya satu request paralel yang bisa lolos saat rule pending request aktif.
 
 2. WBS Weight Constraint
 
@@ -753,7 +754,7 @@ Jika waktu pengembangan terbatas, urutan paling efektif:
 2. Tambahkan test untuk workflow Monitoring, Tracker, dan Finance.
 3. Lengkapi automated test untuk centralized policy layer yang sudah dibuat.
 4. Tambahkan endpoint pembacaan audit_logs global.
-5. Perkuat finance dengan transaction lock untuk mencegah race condition.
+5. Tambahkan concurrency test untuk finance transaction lock.
 6. Lengkapi audit policy dan redaction untuk state machine finance dan tracker.
 7. Tambahkan Redis untuk rate limit, token blacklist, atau S-Curve cache.
 8. Tambahkan OpenAPI spec.
@@ -783,11 +784,11 @@ Mitigasi:
 
 ### Risiko 2: Financial race condition
 
-Payment request menghitung available amount lalu insert request. Jika request paralel, potensi race condition muncul.
+Payment request sebelumnya menghitung available amount lalu insert request tanpa lock. Jika request paralel, potensi race condition muncul.
 
 Mitigasi:
 
-- Transaction dengan row lock.
+- Transaction dengan row lock sudah diterapkan pada create payment request.
 - Unique/partial constraint untuk pending request jika rule hanya satu pending request per contract.
 
 ### Risiko 3: Klaim real-time terlalu kuat

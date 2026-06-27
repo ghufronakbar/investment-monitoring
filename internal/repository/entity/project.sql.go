@@ -325,6 +325,33 @@ func (q *Queries) GetContractByID(ctx context.Context, id uuid.UUID) (Contract, 
 	return i, err
 }
 
+const getContractByIDForUpdate = `-- name: GetContractByIDForUpdate :one
+SELECT id, description, project_id, contract_value, contract_doc_url, gov_supervisor_participant_id, loan_provider_participant_id, executing_agency_participant_id, vendor_participant_id, vendor_participant_selected_at, auditor_participant_id, auditor_participant_selected_at, created_at, updated_at, deleted_at FROM contracts WHERE id = $1 AND deleted_at IS NULL FOR UPDATE
+`
+
+func (q *Queries) GetContractByIDForUpdate(ctx context.Context, id uuid.UUID) (Contract, error) {
+	row := q.db.QueryRowContext(ctx, getContractByIDForUpdate, id)
+	var i Contract
+	err := row.Scan(
+		&i.ID,
+		&i.Description,
+		&i.ProjectID,
+		&i.ContractValue,
+		&i.ContractDocUrl,
+		&i.GovSupervisorParticipantID,
+		&i.LoanProviderParticipantID,
+		&i.ExecutingAgencyParticipantID,
+		&i.VendorParticipantID,
+		&i.VendorParticipantSelectedAt,
+		&i.AuditorParticipantID,
+		&i.AuditorParticipantSelectedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getContractByProjectID = `-- name: GetContractByProjectID :one
 SELECT id, description, project_id, contract_value, contract_doc_url, gov_supervisor_participant_id, loan_provider_participant_id, executing_agency_participant_id, vendor_participant_id, vendor_participant_selected_at, auditor_participant_id, auditor_participant_selected_at, created_at, updated_at, deleted_at FROM contracts WHERE project_id = $1 AND deleted_at IS NULL
 `

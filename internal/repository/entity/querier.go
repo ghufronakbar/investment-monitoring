@@ -81,6 +81,7 @@ type Querier interface {
 	// Filter CLOSED tickets only
 	GetClosedTicketsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetClosedTicketsByContractIDRow, error)
 	GetContractByID(ctx context.Context, id uuid.UUID) (Contract, error)
+	GetContractByIDForUpdate(ctx context.Context, id uuid.UUID) (Contract, error)
 	GetContractByProjectID(ctx context.Context, projectID uuid.UUID) (Contract, error)
 	GetContractWithDetails(ctx context.Context, projectID uuid.UUID) (GetContractWithDetailsRow, error)
 	// Get contract with project settings for currency

@@ -44,55 +44,60 @@ func (s *FinanceService) CreatePaymentRequest(ctx context.Context, params Create
 		return result, errs.NewInternalServerError(err)
 	}
 
-	// Verify user's org is the contractor
-	if contract.VendorParticipantID.Valid && contract.VendorParticipantID.UUID != params.ContractorID {
-		return result, errs.NewForbidden("NOT_CONTRACT_VENDOR")
-	}
-
-	// Check contract_value is set
-	if !contract.ContractValue.Valid || contract.ContractValue.Int64 == 0 {
-		return result, errs.NewBadRequest("CONTRACT_VALUE_NOT_SET")
-	}
-
-	// Validation: Check if there's any pending payment request
-	hasPending, err := s.store.HasPendingPaymentRequest(ctx, contract.ID)
-	if err != nil {
-		return result, errs.NewInternalServerError(err)
-	}
-	if hasPending {
-		return result, errs.NewBadRequest("PENDING_REQUEST_EXISTS")
-	}
-
-	// Calculate available amount
-	paidAmount, err := s.store.GetPaidAmountByContractID(ctx, contract.ID)
-	if err != nil {
-		return result, errs.NewInternalServerError(err)
-	}
-	pendingAmount, err := s.store.GetPendingAmountByContractID(ctx, contract.ID)
-	if err != nil {
-		return result, errs.NewInternalServerError(err)
-	}
-
-	availableAmount := contract.ContractValue.Int64 - paidAmount - pendingAmount
-
-	// Validation: Amount cannot exceed contract_value
-	if params.Amount > contract.ContractValue.Int64 {
-		return result, errs.NewBadRequest("AMOUNT_EXCEEDS_CONTRACT_VALUE")
-	}
-
-	// Validation: Amount cannot exceed available amount
-	if params.Amount > availableAmount {
-		return result, errs.NewBadRequest("AMOUNT_EXCEEDS_AVAILABLE")
-	}
-
 	var pr entity.PaymentRequest
+	var validationErr error
 	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
 		var txErr error
+		lockedContract, txErr := q.GetContractByIDForUpdate(ctx, contract.ID)
+		if txErr != nil {
+			return txErr
+		}
+
+		// Verify user's org is the contractor while holding the contract lock.
+		if lockedContract.VendorParticipantID.Valid && lockedContract.VendorParticipantID.UUID != params.ContractorID {
+			validationErr = errs.NewForbidden("NOT_CONTRACT_VENDOR")
+			return validationErr
+		}
+
+		// Check contract_value is set while holding the contract lock.
+		if !lockedContract.ContractValue.Valid || lockedContract.ContractValue.Int64 == 0 {
+			validationErr = errs.NewBadRequest("CONTRACT_VALUE_NOT_SET")
+			return validationErr
+		}
+
+		hasPending, txErr := q.HasPendingPaymentRequest(ctx, lockedContract.ID)
+		if txErr != nil {
+			return txErr
+		}
+		if hasPending {
+			validationErr = errs.NewBadRequest("PENDING_REQUEST_EXISTS")
+			return validationErr
+		}
+
+		paidAmount, txErr := q.GetPaidAmountByContractID(ctx, lockedContract.ID)
+		if txErr != nil {
+			return txErr
+		}
+		pendingAmount, txErr := q.GetPendingAmountByContractID(ctx, lockedContract.ID)
+		if txErr != nil {
+			return txErr
+		}
+
+		availableAmount := lockedContract.ContractValue.Int64 - paidAmount - pendingAmount
+		if params.Amount > lockedContract.ContractValue.Int64 {
+			validationErr = errs.NewBadRequest("AMOUNT_EXCEEDS_CONTRACT_VALUE")
+			return validationErr
+		}
+		if params.Amount > availableAmount {
+			validationErr = errs.NewBadRequest("AMOUNT_EXCEEDS_AVAILABLE")
+			return validationErr
+		}
+
 		pr, txErr = q.CreatePaymentRequest(ctx, entity.CreatePaymentRequestParams{
 			Title:          params.Title,
 			Amount:         params.Amount,
 			InvoiceFileUrl: params.InvoiceFileUrl,
-			ContractID:     contract.ID,
+			ContractID:     lockedContract.ID,
 		})
 		if txErr != nil {
 			return txErr
@@ -106,13 +111,17 @@ func (s *FinanceService) CreatePaymentRequest(ctx context.Context, params Create
 			EntityID:    pr.ID,
 			AfterData: map[string]any{
 				"paymentRequestId": pr.ID,
-				"contractId":       contract.ID,
+				"contractId":       lockedContract.ID,
 				"title":            pr.Title,
 				"amount":           pr.Amount,
+				"availableBefore":  availableAmount,
 				"status":           pr.Status,
 			},
 		})
 	})
+	if validationErr != nil {
+		return result, validationErr
+	}
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
 	}

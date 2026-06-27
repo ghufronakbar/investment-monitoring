@@ -314,43 +314,42 @@ Untuk flow yang sudah memakai transaksi, audit dicatat dalam transaksi yang sama
 
 ## 5. Finance Concurrency Control
 
-### Status Saat Ini
+### Status Implementasi
 
-`CreatePaymentRequest` menghitung paid amount, pending amount, available amount, lalu insert payment request. Jika dua request paralel masuk bersamaan, ada risiko race condition.
+`CreatePaymentRequest` sudah diperkuat dengan transaction boundary dan row-level lock pada contract. Risiko dua request paralel membaca available amount yang sama sudah dikurangi karena perhitungan paid/pending dan insert payment request sekarang berjalan setelah `contracts` terkunci.
 
-### Yang Perlu Dibuat
+### Yang Sudah Dibuat
 
-Buat flow create payment request dalam transaction dengan row lock:
-
-```sql
-SELECT * FROM contracts
-WHERE id = $1
-FOR UPDATE;
-```
-
-Tambahkan query sqlc:
+Query sqlc baru:
 
 ```sql
 -- name: GetContractByIDForUpdate :one
-SELECT * FROM contracts
-WHERE id = $1 AND deleted_at IS NULL
-FOR UPDATE;
+SELECT * FROM contracts WHERE id = $1 AND deleted_at IS NULL FOR UPDATE;
 ```
 
-Ubah `FinanceService.CreatePaymentRequest` agar:
+Integrasi service:
 
-1. mulai transaction;
-2. lock contract row;
-3. hitung paid/pending di transaction yang sama;
-4. validasi available amount;
-5. insert payment request;
-6. commit.
+1. Lookup contract dari project.
+2. Mulai transaction.
+3. Lock contract row dengan `GetContractByIDForUpdate`.
+4. Validasi contractor participant dan contract value saat lock aktif.
+5. Hitung `hasPending`, paid amount, pending amount, dan available amount dalam transaction yang sama.
+6. Validasi amount.
+7. Insert payment request.
+8. Tulis audit log `CREATE_PAYMENT_REQUEST` dalam transaction yang sama.
+9. Commit.
 
 ### Manfaat
 
 - Mencegah double spending contract value.
 - Membuat workflow finance lebih aman.
 - Ini improvement senior-level karena menyentuh consistency dan race condition.
+
+### Sisa Peningkatan
+
+- Tambahkan integration/concurrency test dengan dua goroutine yang submit payment request ke contract yang sama.
+- Pertimbangkan lock/read consistency tambahan untuk flow yang mengubah status finance jika nanti ada reversal atau cancel payment.
+- Tambahkan metric/log untuk lock wait time jika volume transaksi meningkat.
 
 ---
 

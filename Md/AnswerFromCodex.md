@@ -273,7 +273,7 @@ Kenapa bagus:
 
 - Menunjukkan separation of duties.
 - Sangat relevan dengan proyek investasi internasional.
-- Perlu concurrency control, sehingga bisa dibahas lebih teknis.
+- Create payment request sudah mulai dilindungi dengan row-level lock, sehingga bisa dibahas lebih teknis dari sisi consistency dan race condition.
 
 ---
 

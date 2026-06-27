@@ -26,6 +26,9 @@ VALUES ($1, $2, $3, $4) RETURNING *;
 -- name: GetContractByID :one
 SELECT * FROM contracts WHERE id = $1 AND deleted_at IS NULL;
 
+-- name: GetContractByIDForUpdate :one
+SELECT * FROM contracts WHERE id = $1 AND deleted_at IS NULL FOR UPDATE;
+
 -- name: GetContractByProjectID :one
 SELECT * FROM contracts WHERE project_id = $1 AND deleted_at IS NULL;
 
@@ -173,4 +176,3 @@ WHERE om.user_id = $1
         gp.gov_participant_id IS NOT NULL
     )
 ORDER BY p.created_at DESC;
-
