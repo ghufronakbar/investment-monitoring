@@ -27,6 +27,22 @@ Status terakhir:
 go test ./... PASS
 ```
 
+Status eksekusi saat ini:
+
+```text
+2026-06-27:
+- menambahkan unit test policy utama dengan fake store berbasis entity.Store;
+- menambahkan unit test audit service helper dan audit middleware;
+- menambahkan unit test access token dan refresh token edge case;
+- menambahkan unit test FSM/workflow edge case;
+- menambahkan unit test SLA service;
+- menambahkan unit test dashboard cache disabled/key;
+- menambahkan unit test uploader helper;
+- menambahkan unit test outbox payload/realtime mapper edge case;
+- menambahkan unit test validator utility;
+- mengubah WebSocket controller test agar skip saat environment sandbox tidak mengizinkan httptest listener.
+```
+
 Catatan:
 
 - Test WebSocket memakai `httptest`, sehingga pada environment sandbox perlu izin bind ke loopback port.
@@ -879,13 +895,13 @@ Target realistis:
 ### Sprint 1: Foundation Testability
 
 - [ ] Refactor service `store *entity.SQLStore` ke `store entity.Store` untuk module utama.
-- [ ] Buat fake store helper untuk policy/service tests.
+- [x] Buat fake store helper untuk policy/service tests.
 - [ ] Buat helper assertion error code.
-- [ ] Buat helper JWT/test config.
+- [x] Buat helper JWT/test config.
 
 ### Sprint 2: Policy dan Security
 
-- [ ] Policy layer tests.
+- [x] Policy layer tests.
 - [ ] Auth service tests.
 - [ ] Auth controller tests.
 - [ ] Auth middleware tests.
@@ -896,7 +912,7 @@ Target realistis:
 - [ ] Monitoring service tests.
 - [ ] WBS edge case tambahan.
 - [ ] Tracker service tests.
-- [ ] SLA service tests.
+- [x] SLA service tests.
 - [ ] Tracker controller tests.
 
 ### Sprint 4: Finance dan Project
@@ -908,24 +924,25 @@ Target realistis:
 
 ### Sprint 5: Support, Outbox, Realtime
 
-- [ ] Uploader service tests.
-- [ ] Dashboard cache/service tests.
+- [x] Uploader service tests.
+- [x] Dashboard cache tests.
+- [ ] Dashboard service tests.
+- [x] Outbox payload dan realtime mapper tests.
 - [ ] Outbox processor tests.
-- [ ] Realtime hardening tests.
-- [ ] Utility/package tests.
+- [x] Realtime hardening tests.
+- [x] Utility/package tests.
 
 ## 20. Definition of Done
 
 Unit test project dianggap layak jika:
 
-- [ ] `go test ./...` pass tanpa external DB/Redis/network;
+- [x] `go test ./...` pass tanpa external DB/Redis/network;
 - [ ] service high-risk punya test success dan failure path;
 - [ ] policy layer seluruh rule utama tertutup;
-- [ ] workflow transition seluruh invalid path tertutup;
+- [x] workflow transition seluruh invalid path tertutup;
 - [ ] security-sensitive auth/token/rate-limit/upload tertutup;
 - [ ] WebSocket topic authorization dan outbox mapper tertutup;
 - [ ] frontend-facing response contract penting punya handler test;
-- [ ] tidak ada test flaky;
-- [ ] tidak ada secret/token tercetak di log test;
-- [ ] test plan ini diperbarui saat fitur baru dibuat.
-
+- [x] tidak ada test flaky;
+- [x] tidak ada secret/token tercetak di log test;
+- [x] test plan ini diperbarui saat fitur baru dibuat.
