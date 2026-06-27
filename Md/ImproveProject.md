@@ -259,16 +259,15 @@ Cara menulis di jurnal:
 
 ### 4.2 Redis Sudah Mulai Digunakan
 
-Redis dependency dan config sekarang digunakan untuk refresh token revocation. Koneksi Redis dibuat optional agar server tetap bisa run tanpa Redis lokal; jika Redis tersedia, logout dan revoke-all refresh token aktif.
+Redis dependency dan config sekarang digunakan untuk refresh token revocation dan rate limiting auth endpoint. Koneksi Redis dibuat optional agar server tetap bisa run tanpa Redis lokal; jika Redis tersedia, logout, revoke-all refresh token, dan rate limit counter memakai Redis.
 
 Pilihan improvement:
 
 - cache dashboard S-Curve;
-- rate limiting login;
 - notification queue;
 - distributed lock untuk finance request jika nanti perlu lock lintas proses.
 
-Untuk jurnal IT, Redis sekarang bisa dibahas sebagai komponen security untuk token revocation, lalu diperluas ke cache/rate limiting sebagai roadmap scalability.
+Untuk jurnal IT, Redis sekarang bisa dibahas sebagai komponen security untuk token revocation dan brute-force mitigation, lalu diperluas ke cache sebagai roadmap scalability.
 
 ### 4.3 Beberapa Endpoint Belum Lengkap
 
@@ -346,13 +345,13 @@ Rekomendasi:
 
 3. Rate Limiting Login
 
-   Tambahkan rate limiting pada:
+   Baseline rate limiting sudah dibuat pada:
 
    - `/iam/auth/check-email`
    - `/iam/auth/login`
    - `/iam/auth/refresh-token`
 
-   Redis cocok untuk ini.
+   Redis dipakai jika tersedia, dengan fallback in-memory untuk local development. Sisa peningkatan adalah env-based limit/window dan observability request yang diblokir.
 
 4. Audit Trail Global
 
@@ -753,7 +752,7 @@ Jika waktu pengembangan terbatas, urutan paling efektif:
 4. Tambahkan endpoint pembacaan audit_logs global.
 5. Tambahkan concurrency test untuk finance transaction lock.
 6. Lengkapi audit policy dan redaction untuk state machine finance dan tracker.
-7. Tambahkan Redis untuk rate limit, token blacklist, atau S-Curve cache.
+7. Tambahkan dashboard cache atau queue berbasis Redis.
 8. Tambahkan OpenAPI spec.
 9. Tambahkan dashboard risk indicator.
 10. Tambahkan outbox pattern dan notification worker.

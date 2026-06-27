@@ -56,6 +56,7 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 
 	// Auth middleware
 	authMiddleware := internal_middleware.AuthMiddleware(*tokenSvc)
+	authRateLimiter := internal_middleware.NewAuthRateLimiter(rdb, cfg.REDIS_PREFIX)
 
 	// Example service
 	subexampleSvc := subexample_service.NewService(db)
@@ -107,7 +108,14 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	// IAM routes
 	r.Route("/iam", func(r chi.Router) {
 		// Auth routes (public, no auth required)
-		r.Mount("/auth", authHandler.Routes())
+		r.Route("/auth", func(r chi.Router) {
+			r.With(authRateLimiter.Limit("check-email")).Post("/check-email", authHandler.CheckEmail)
+			r.With(authRateLimiter.Limit("login")).Post("/login", authHandler.Login)
+			r.Post("/set-password", authHandler.SetPassword)
+			r.With(authRateLimiter.Limit("refresh-token")).Post("/refresh-token", authHandler.RefreshToken)
+			r.Post("/logout", authHandler.Logout)
+			r.Post("/revoke-all", authHandler.RevokeAll)
+		})
 
 		// Profile routes (protected)
 		r.Route("/profile", func(r chi.Router) {

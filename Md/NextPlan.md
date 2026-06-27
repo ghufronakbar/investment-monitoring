@@ -427,11 +427,11 @@ Redis connection dibuat optional di `cmd/api/main.go`: jika Redis tidak tersedia
 
 ## 7. Rate Limiting Login dan Auth Endpoint
 
-### Status Saat Ini
+### Status Implementasi
 
-Belum ada rate limiting untuk endpoint auth.
+Sudah dibuat rate limiting untuk endpoint auth yang sensitif. Middleware memakai Redis saat Redis tersedia, dan otomatis fallback ke in-memory counter saat Redis tidak tersedia atau error, sehingga server tetap bisa berjalan di local development.
 
-### Yang Perlu Dibuat
+### Yang Sudah Dibuat
 
 Middleware:
 
@@ -447,13 +447,38 @@ Endpoint yang perlu dilindungi:
 
 Storage:
 
-- Redis jika ingin scalable.
-- In-memory map untuk prototype lokal.
+- Redis key jika Redis tersedia.
+- In-memory map sebagai fallback lokal.
 
-Rule contoh:
+Rule default:
 
 ```text
-max 5 login attempts per email/IP per 5 minutes
+max 5 request per action + IP/email per 5 minutes
+```
+
+Key Redis:
+
+```text
+{REDIS_PREFIX}:rate-limit:auth:{action}:{sha256(identity)}
+```
+
+Identity:
+
+- Untuk request yang punya `email`, limiter memakai kombinasi IP + email.
+- Untuk `refresh-token`, limiter memakai IP karena payload tidak punya email.
+
+Response saat limit terlampaui:
+
+```text
+HTTP 429
+RATE_LIMIT_EXCEEDED
+Retry-After: seconds
+```
+
+Test:
+
+```text
+internal/http/internal_middleware/rate_limit_test.go
 ```
 
 ### Manfaat
@@ -461,6 +486,12 @@ max 5 login attempts per email/IP per 5 minutes
 - Mengurangi risiko brute force.
 - Redis yang sebelumnya belum digunakan bisa punya fungsi jelas.
 - Cocok untuk pembahasan security engineering.
+
+### Sisa Peningkatan
+
+- Tambahkan konfigurasi limit/window via env.
+- Tambahkan limit berbeda untuk `login`, `check-email`, dan `refresh-token`.
+- Tambahkan observability untuk jumlah request yang diblokir.
 
 ---
 

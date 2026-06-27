@@ -70,6 +70,16 @@ func NewForbidden(message string) *AppError {
 	}
 }
 
+func NewTooManyRequests(message string) *AppError {
+	if message == "" {
+		message = "TOO_MANY_REQUESTS"
+	}
+	return &AppError{
+		Code:    http.StatusTooManyRequests,
+		Message: message,
+	}
+}
+
 func NewInternalServerError(err error) *AppError {
 	return &AppError{
 		Code:    http.StatusInternalServerError,
