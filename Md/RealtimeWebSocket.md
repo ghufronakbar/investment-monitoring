@@ -1,6 +1,6 @@
 # Realtime WebSocket
 
-Dokumentasi ini mencatat kontrak WebSocket yang sudah tersedia pada Tahap 1 implementasi.
+Dokumentasi ini mencatat kontrak WebSocket yang sudah tersedia pada implementasi saat ini.
 
 ## Endpoint
 
@@ -79,6 +79,32 @@ type PongData struct {
 ```
 
 ## Subscribe
+
+Subscribe melewati authorization di backend. Topic yang valid tetapi tidak boleh diakses user akan masuk ke `data.rejected`.
+
+Topic yang didukung:
+
+```text
+user.{userId}
+project.{projectId}
+project.{projectId}.monitoring
+project.{projectId}.ticket
+project.{projectId}.finance
+ticket.{ticketId}
+payment.{paymentRequestId}
+organization.{organizationId}
+```
+
+Rule authorization:
+
+- `user.{userId}` hanya untuk user itu sendiri.
+- `project.{projectId}` memakai akses project umum.
+- `project.{projectId}.monitoring` memakai akses monitoring project.
+- `project.{projectId}.ticket` memakai akses tracker project.
+- `project.{projectId}.finance` memakai akses finance project.
+- `ticket.{ticketId}` memakai akses view ticket.
+- `payment.{paymentRequestId}` memakai akses view payment request.
+- `organization.{organizationId}` hanya untuk member organization tersebut.
 
 Client message single topic:
 
@@ -179,11 +205,9 @@ type ErrorData struct {
 }
 ```
 
-## Batasan Tahap 1
+## Batasan Saat Ini
 
-- Topic authorization belum dibuat.
 - Redis Pub/Sub fanout belum dibuat.
 - Outbox event belum dikirim ke WebSocket.
 - Tidak ada replay untuk client yang offline.
 - Presence belum dibuat.
-

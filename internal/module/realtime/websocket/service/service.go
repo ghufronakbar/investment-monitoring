@@ -9,6 +9,8 @@ import (
 
 	"investment_monitoring/config"
 	token_service "investment_monitoring/internal/module/support/token/service"
+	"investment_monitoring/internal/policy"
+	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 
 	"nhooyr.io/websocket"
@@ -17,13 +19,17 @@ import (
 type Service struct {
 	cfg        *config.Config
 	tokenMaker *token_service.TokenMaker
+	store      entity.Store
+	policy     *policy.Service
 	hub        *Hub
 }
 
-func NewService(cfg *config.Config, tokenMaker *token_service.TokenMaker) *Service {
+func NewService(cfg *config.Config, tokenMaker *token_service.TokenMaker, store entity.Store) *Service {
 	return &Service{
 		cfg:        cfg,
 		tokenMaker: tokenMaker,
+		store:      store,
+		policy:     newTopicPolicy(store),
 		hub:        NewHub(),
 	}
 }
@@ -112,7 +118,7 @@ func (s *Service) readLoop(ctx context.Context, conn *websocket.Conn, client *Cl
 			client.Enqueue(NewSystemEnvelope(EventRealtimeError, ErrorData{Message: "INVALID_JSON"}))
 			continue
 		}
-		s.handleClientMessage(client, msg)
+		s.handleClientMessage(ctx, client, msg)
 	}
 }
 
@@ -137,14 +143,14 @@ func (s *Service) writeLoop(ctx context.Context, conn *websocket.Conn, client *C
 	}
 }
 
-func (s *Service) handleClientMessage(client *Client, msg ClientMessage) {
+func (s *Service) handleClientMessage(ctx context.Context, client *Client, msg ClientMessage) {
 	switch msg.Type {
 	case ClientMessagePing:
 		client.Enqueue(NewSystemEnvelope(EventRealtimePong, PongData{
 			ReceivedAt: time.Now().UTC(),
 		}))
 	case ClientMessageSubscribe:
-		s.handleSubscribe(client, msg)
+		s.handleSubscribe(ctx, client, msg)
 	case ClientMessageUnsubscribe:
 		s.handleUnsubscribe(client, msg)
 	default:
@@ -152,12 +158,12 @@ func (s *Service) handleClientMessage(client *Client, msg ClientMessage) {
 	}
 }
 
-func (s *Service) handleSubscribe(client *Client, msg ClientMessage) {
-	var subscribed []string
-	var rejected []string
+func (s *Service) handleSubscribe(ctx context.Context, client *Client, msg ClientMessage) {
+	subscribed := []string{}
+	rejected := []string{}
 
 	for _, topic := range msg.NormalizedTopics() {
-		if !isValidTopic(topic) {
+		if err := s.AuthorizeTopic(ctx, client.UserID, topic); err != nil {
 			rejected = append(rejected, topic)
 			continue
 		}
@@ -166,14 +172,15 @@ func (s *Service) handleSubscribe(client *Client, msg ClientMessage) {
 	}
 
 	client.Enqueue(NewSystemEnvelope(EventRealtimeSubscriptionUpdated, SubscriptionUpdatedData{
-		Subscribed: subscribed,
-		Rejected:   rejected,
+		Subscribed:   subscribed,
+		Unsubscribed: []string{},
+		Rejected:     rejected,
 	}))
 }
 
 func (s *Service) handleUnsubscribe(client *Client, msg ClientMessage) {
-	var unsubscribed []string
-	var rejected []string
+	unsubscribed := []string{}
+	rejected := []string{}
 
 	for _, topic := range msg.NormalizedTopics() {
 		if !isValidTopic(topic) {
@@ -185,6 +192,7 @@ func (s *Service) handleUnsubscribe(client *Client, msg ClientMessage) {
 	}
 
 	client.Enqueue(NewSystemEnvelope(EventRealtimeSubscriptionUpdated, SubscriptionUpdatedData{
+		Subscribed:   []string{},
 		Unsubscribed: unsubscribed,
 		Rejected:     rejected,
 	}))

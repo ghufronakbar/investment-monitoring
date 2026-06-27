@@ -546,10 +546,22 @@ Catatan implementasi Tahap 1:
 
 Tahap 2: Authorization dan topic project
 
-- [ ] Implement topic parser.
-- [ ] Implement topic authorization.
-- [ ] Tambah topic `user`, `project`, `ticket`, `payment`, `organization`.
-- [ ] Tambah unit test topic.
+- [x] Implement topic parser.
+- [x] Implement topic authorization.
+- [x] Tambah topic `user`, `project`, `ticket`, `payment`, `organization`.
+- [x] Tambah unit test topic.
+
+Catatan implementasi Tahap 2:
+
+- Topic parser tersedia untuk `user.{userId}`, `project.{projectId}`, `project.{projectId}.monitoring`, `project.{projectId}.ticket`, `project.{projectId}.finance`, `ticket.{ticketId}`, `payment.{paymentRequestId}`, dan `organization.{organizationId}`.
+- Subscribe sekarang melewati server-side authorization sebelum topic didaftarkan ke hub.
+- Topic unauthorized masuk ke `data.rejected`, bukan menyebabkan koneksi langsung putus.
+- Rule authorization memakai policy layer yang sama dengan REST API:
+  - `user.{userId}` hanya untuk user itu sendiri;
+  - `project.*` memakai policy project/monitoring/tracker/finance;
+  - `ticket.{ticketId}` memakai `CanViewTicket`;
+  - `payment.{paymentRequestId}` memakai `CanViewPaymentRequest`;
+  - `organization.{organizationId}` memakai membership check.
 
 Tahap 3: Redis fanout
 

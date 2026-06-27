@@ -83,7 +83,7 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) (
 	financeSvc := finance_service.NewService(db, rdb, cfg)
 
 	// Realtime services
-	websocketSvc := websocket_service.NewService(cfg, tokenSvc)
+	websocketSvc := websocket_service.NewService(cfg, tokenSvc, db)
 
 	// Uploader service
 	uploaderSvc, _ := uploader_service.NewService(db, cfg)
