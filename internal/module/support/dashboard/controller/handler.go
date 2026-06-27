@@ -6,6 +6,7 @@ import (
 
 	"investment_monitoring/internal/http/internal_middleware"
 	dashboard_service "investment_monitoring/internal/module/support/dashboard/service"
+	"investment_monitoring/internal/policy"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 	"investment_monitoring/pkg/response"
@@ -16,13 +17,13 @@ import (
 
 type Handler struct {
 	dashboardSvc *dashboard_service.DashboardService
-	store        entity.Store
+	policy       *policy.Service
 }
 
 func NewHandler(dashboardSvc *dashboard_service.DashboardService, store entity.Store) *Handler {
 	return &Handler{
 		dashboardSvc: dashboardSvc,
-		store:        store,
+		policy:       policy.NewService(store),
 	}
 }
 
@@ -51,13 +52,8 @@ func (h *Handler) GetSCurve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectID,
-		UserID:    user.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
+	if err := h.policy.CanViewDashboardProject(r.Context(), user.ID, projectID); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -90,13 +86,8 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectID,
-		UserID:    user.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
+	if err := h.policy.CanViewDashboardProject(r.Context(), user.ID, projectID); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 

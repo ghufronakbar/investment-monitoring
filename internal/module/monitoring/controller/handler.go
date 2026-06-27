@@ -6,6 +6,7 @@ import (
 
 	"investment_monitoring/internal/http/internal_middleware"
 	monitoring_service "investment_monitoring/internal/module/monitoring/service"
+	"investment_monitoring/internal/policy"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 	"investment_monitoring/pkg/response"
@@ -16,14 +17,14 @@ import (
 )
 
 type Handler struct {
-	svc   *monitoring_service.MonitoringService
-	store entity.Store
+	svc    *monitoring_service.MonitoringService
+	policy *policy.Service
 }
 
 func NewHandler(svc *monitoring_service.MonitoringService, store entity.Store) *Handler {
 	return &Handler{
-		svc:   svc,
-		store: store,
+		svc:    svc,
+		policy: policy.NewService(store),
 	}
 }
 
@@ -81,13 +82,8 @@ func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: must be EXECUTING_AGENCY ADMIN
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "EXECUTING_AGENCY" || access.MemberRole != entity.MemberRoleEnumADMIN {
-		response.Error(w, r, errs.NewForbidden("EXECUTING_AGENCY_ADMIN_REQUIRED"), nil)
+	if err := h.policy.CanConfigureProject(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -122,13 +118,8 @@ func (h *Handler) GetTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: any project participant
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NO_PROJECT_ACCESS"), nil)
+	if err := h.policy.CanViewMonitoringProject(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -159,13 +150,8 @@ func (h *Handler) GetLeafTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: any project participant
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NO_PROJECT_ACCESS"), nil)
+	if err := h.policy.CanViewMonitoringProject(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -205,27 +191,8 @@ func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get task to find contract/project
-	task, err := h.store.GetTaskByID(r.Context(), taskId)
-	if err != nil {
-		response.Error(w, r, errs.NewNotFound("TASK_NOT_FOUND"), nil)
-		return
-	}
-
-	// Get contract to find project
-	contract, err := h.store.GetContractByID(r.Context(), task.ContractID)
-	if err != nil {
-		response.Error(w, r, errs.NewNotFound("CONTRACT_NOT_FOUND"), nil)
-		return
-	}
-
-	// Check access: must be EXECUTING_AGENCY ADMIN
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: contract.ProjectID,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "EXECUTING_AGENCY" || access.MemberRole != entity.MemberRoleEnumADMIN {
-		response.Error(w, r, errs.NewForbidden("EXECUTING_AGENCY_ADMIN_REQUIRED"), nil)
+	if err := h.policy.CanManageTask(r.Context(), userClaims.ID, taskId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -260,27 +227,8 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get task to find contract/project
-	task, err := h.store.GetTaskByID(r.Context(), taskId)
-	if err != nil {
-		response.Error(w, r, errs.NewNotFound("TASK_NOT_FOUND"), nil)
-		return
-	}
-
-	// Get contract to find project
-	contract, err := h.store.GetContractByID(r.Context(), task.ContractID)
-	if err != nil {
-		response.Error(w, r, errs.NewNotFound("CONTRACT_NOT_FOUND"), nil)
-		return
-	}
-
-	// Check access: must be EXECUTING_AGENCY ADMIN
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: contract.ProjectID,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "EXECUTING_AGENCY" || access.MemberRole != entity.MemberRoleEnumADMIN {
-		response.Error(w, r, errs.NewForbidden("EXECUTING_AGENCY_ADMIN_REQUIRED"), nil)
+	if err := h.policy.CanManageTask(r.Context(), userClaims.ID, taskId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -312,27 +260,9 @@ func (h *Handler) SubmitProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get task to find contract/project
-	task, err := h.store.GetTaskByID(r.Context(), taskId)
+	access, err := h.policy.CanSubmitProgress(r.Context(), userClaims.ID, taskId)
 	if err != nil {
-		response.Error(w, r, errs.NewNotFound("TASK_NOT_FOUND"), nil)
-		return
-	}
-
-	// Get contract to find project
-	contract, err := h.store.GetContractByID(r.Context(), task.ContractID)
-	if err != nil {
-		response.Error(w, r, errs.NewNotFound("CONTRACT_NOT_FOUND"), nil)
-		return
-	}
-
-	// Check access: must be CONTRACTOR (vendor)
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: contract.ProjectID,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "CONTRACTOR" {
-		response.Error(w, r, errs.NewForbidden("CONTRACTOR_REQUIRED"), nil)
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -368,13 +298,8 @@ func (h *Handler) GetProgressLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: any project participant
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NO_PROJECT_ACCESS"), nil)
+	if err := h.policy.CanViewMonitoringProject(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -405,13 +330,8 @@ func (h *Handler) GetPendingValidations(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Check access: must be INDEPENDENT_AUDITOR
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "INDEPENDENT_AUDITOR" {
-		response.Error(w, r, errs.NewForbidden("AUDITOR_REQUIRED"), nil)
+	if err := h.policy.CanViewPendingValidations(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -452,27 +372,9 @@ func (h *Handler) ValidateProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get log to find task/contract/project
-	log, err := h.store.GetProgressLogWithDetails(r.Context(), logId)
+	access, err := h.policy.CanValidateProgress(r.Context(), userClaims.ID, logId)
 	if err != nil {
-		response.Error(w, r, errs.NewNotFound("PROGRESS_LOG_NOT_FOUND"), nil)
-		return
-	}
-
-	// Get contract to find project
-	contract, err := h.store.GetContractByID(r.Context(), log.ContractID)
-	if err != nil {
-		response.Error(w, r, errs.NewNotFound("CONTRACT_NOT_FOUND"), nil)
-		return
-	}
-
-	// Check access: must be INDEPENDENT_AUDITOR
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: contract.ProjectID,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "INDEPENDENT_AUDITOR" {
-		response.Error(w, r, errs.NewForbidden("AUDITOR_REQUIRED"), nil)
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -510,13 +412,8 @@ func (h *Handler) GetSCurve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: any project participant
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NO_PROJECT_ACCESS"), nil)
+	if err := h.policy.CanViewMonitoringProject(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -530,17 +427,4 @@ func (h *Handler) GetSCurve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.OK(w, r, "SUCCESS_GET_SCURVE", res)
-}
-
-// ===== HELPER =====
-
-// getParticipantRoleString safely converts interface{} to string
-func getParticipantRoleString(role interface{}) string {
-	if role == nil {
-		return ""
-	}
-	if s, ok := role.(string); ok {
-		return s
-	}
-	return ""
 }

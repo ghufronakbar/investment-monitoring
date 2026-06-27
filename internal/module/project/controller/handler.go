@@ -6,6 +6,7 @@ import (
 
 	"investment_monitoring/internal/http/internal_middleware"
 	project_service "investment_monitoring/internal/module/project/service"
+	"investment_monitoring/internal/policy"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 	"investment_monitoring/pkg/response"
@@ -16,14 +17,14 @@ import (
 )
 
 type Handler struct {
-	svc   *project_service.ProjectService
-	store entity.Store
+	svc    *project_service.ProjectService
+	policy *policy.Service
 }
 
 func NewHandler(svc *project_service.ProjectService, store entity.Store) *Handler {
 	return &Handler{
-		svc:   svc,
-		store: store,
+		svc:    svc,
+		policy: policy.NewService(store),
 	}
 }
 
@@ -60,17 +61,6 @@ func (h *Handler) Routes() chi.Router {
 	return r
 }
 
-// getParticipantRoleString safely converts interface{} to string
-func getParticipantRoleString(role interface{}) string {
-	if role == nil {
-		return ""
-	}
-	if s, ok := role.(string); ok {
-		return s
-	}
-	return ""
-}
-
 // Create handles POST /project
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req project_service.CreateProjectParams
@@ -82,25 +72,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user has GOV_SUPERVISOR membership
-	memberships, err := h.store.GetUserMemberships(r.Context(), userClaims.ID)
+	callerOrgID, err := h.policy.CanCreateProject(r.Context(), userClaims.ID)
 	if err != nil {
-		response.Error(w, r, errs.NewInternalServerError(err), nil)
-		return
-	}
-
-	var callerOrgID uuid.UUID
-	hasGovSupervisor := false
-	for _, m := range memberships {
-		if m.OrgRole == entity.OrganizationRoleEnumGOVSUPERVISOR && m.MemberRole == entity.MemberRoleEnumADMIN {
-			callerOrgID = m.OrgID
-			hasGovSupervisor = true
-			break
-		}
-	}
-
-	if !hasGovSupervisor {
-		response.Error(w, r, errs.NewForbidden("GOV_SUPERVISOR_ADMIN_REQUIRED"), nil)
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -152,25 +126,9 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user has access to this project
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil {
-		// Allow GOV_SUPERVISOR to view any project
-		memberships, _ := h.store.GetUserMemberships(r.Context(), userClaims.ID)
-		hasGovSupervisor := false
-		for _, m := range memberships {
-			if m.OrgRole == entity.OrganizationRoleEnumGOVSUPERVISOR {
-				hasGovSupervisor = true
-				break
-			}
-		}
-		if !hasGovSupervisor {
-			response.Error(w, r, errs.NewForbidden("NO_PROJECT_ACCESS"), nil)
-			return
-		}
+	if err := h.policy.CanViewProject(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
+		return
 	}
 
 	res, err := h.svc.GetByID(r.Context(), project_service.GetProjectParams{
@@ -203,17 +161,8 @@ func (h *Handler) ConfigureSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: must be EXECUTING_AGENCY ADMIN for this project
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NO_PROJECT_ACCESS"), nil)
-		return
-	}
-	if getParticipantRoleString(access.ParticipantRole) != "EXECUTING_AGENCY" || access.MemberRole != entity.MemberRoleEnumADMIN {
-		response.Error(w, r, errs.NewForbidden("EXECUTING_AGENCY_ADMIN_REQUIRED"), nil)
+	if err := h.policy.CanConfigureProject(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -250,13 +199,8 @@ func (h *Handler) AssignExecutingAgency(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Check access: must be GOV_SUPERVISOR ADMIN
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "GOV_SUPERVISOR" || access.MemberRole != entity.MemberRoleEnumADMIN {
-		response.Error(w, r, errs.NewForbidden("GOV_SUPERVISOR_ADMIN_REQUIRED"), nil)
+	if err := h.policy.CanAssignExecutingAgency(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -293,13 +237,8 @@ func (h *Handler) AssignVendor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: must be EXECUTING_AGENCY ADMIN
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "EXECUTING_AGENCY" || access.MemberRole != entity.MemberRoleEnumADMIN {
-		response.Error(w, r, errs.NewForbidden("EXECUTING_AGENCY_ADMIN_REQUIRED"), nil)
+	if err := h.policy.CanManageProjectContract(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -336,13 +275,8 @@ func (h *Handler) AssignAuditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: must be EXECUTING_AGENCY ADMIN
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "EXECUTING_AGENCY" || access.MemberRole != entity.MemberRoleEnumADMIN {
-		response.Error(w, r, errs.NewForbidden("EXECUTING_AGENCY_ADMIN_REQUIRED"), nil)
+	if err := h.policy.CanManageProjectContract(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -379,13 +313,8 @@ func (h *Handler) AssignGovPartners(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access: must be EXECUTING_AGENCY ADMIN
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectId,
-		UserID:    userClaims.ID,
-	})
-	if err != nil || getParticipantRoleString(access.ParticipantRole) != "EXECUTING_AGENCY" || access.MemberRole != entity.MemberRoleEnumADMIN {
-		response.Error(w, r, errs.NewForbidden("EXECUTING_AGENCY_ADMIN_REQUIRED"), nil)
+	if err := h.policy.CanManageProjectContract(r.Context(), userClaims.ID, projectId); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 

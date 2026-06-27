@@ -6,6 +6,7 @@ import (
 
 	"investment_monitoring/internal/http/internal_middleware"
 	finance_service "investment_monitoring/internal/module/finance/service"
+	"investment_monitoring/internal/policy"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 	"investment_monitoring/pkg/response"
@@ -17,13 +18,13 @@ import (
 
 type Handler struct {
 	financeSvc *finance_service.FinanceService
-	store      entity.Store
+	policy     *policy.Service
 }
 
 func NewHandler(financeSvc *finance_service.FinanceService, store entity.Store) *Handler {
 	return &Handler{
 		financeSvc: financeSvc,
-		store:      store,
+		policy:     policy.NewService(store),
 	}
 }
 
@@ -48,17 +49,6 @@ func (h *Handler) Routes() chi.Router {
 	return r
 }
 
-// Helper to get participant role as string
-func getParticipantRoleString(role interface{}) string {
-	if role == nil {
-		return ""
-	}
-	if s, ok := role.(string); ok {
-		return s
-	}
-	return ""
-}
-
 // ===== HANDLERS =====
 
 // CreatePaymentRequest handles POST /finance/project/{projectId}/request
@@ -79,19 +69,9 @@ func (h *Handler) CreatePaymentRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access - must be CONTRACTOR
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectID,
-		UserID:    user.ID,
-	})
+	access, err := h.policy.CanCreatePaymentRequest(r.Context(), user.ID, projectID)
 	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
-		return
-	}
-
-	role := getParticipantRoleString(access.ParticipantRole)
-	if role != string(entity.OrganizationRoleEnumCONTRACTOR) {
-		response.Error(w, r, errs.NewForbidden("CONTRACTOR_REQUIRED"), nil)
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -129,13 +109,8 @@ func (h *Handler) GetPaymentRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectID,
-		UserID:    user.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
+	if err := h.policy.CanViewFinanceProject(r.Context(), user.ID, projectID); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -168,20 +143,8 @@ func (h *Handler) GetPaymentRequestByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Get request to check contract
-	pr, err := h.store.GetPaymentRequestWithContract(r.Context(), requestID)
-	if err != nil {
-		response.Error(w, r, errs.NewNotFound("PAYMENT_REQUEST_NOT_FOUND"), nil)
-		return
-	}
-
-	// Check access via contract's project
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: pr.ProjectID,
-		UserID:    user.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
+	if err := h.policy.CanViewPaymentRequest(r.Context(), user.ID, requestID); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -216,26 +179,9 @@ func (h *Handler) ApproveByAuditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get request to check contract
-	pr, err := h.store.GetPaymentRequestWithContract(r.Context(), requestID)
+	access, err := h.policy.CanApprovePaymentAsAuditor(r.Context(), user.ID, requestID)
 	if err != nil {
-		response.Error(w, r, errs.NewNotFound("PAYMENT_REQUEST_NOT_FOUND"), nil)
-		return
-	}
-
-	// Check access
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: pr.ProjectID,
-		UserID:    user.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
-		return
-	}
-
-	role := getParticipantRoleString(access.ParticipantRole)
-	if role != string(entity.OrganizationRoleEnumINDEPENDENTAUDITOR) {
-		response.Error(w, r, errs.NewForbidden("AUDITOR_REQUIRED"), nil)
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -275,26 +221,9 @@ func (h *Handler) ApproveByAgency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get request to check contract
-	pr, err := h.store.GetPaymentRequestWithContract(r.Context(), requestID)
+	access, err := h.policy.CanApprovePaymentAsAgency(r.Context(), user.ID, requestID)
 	if err != nil {
-		response.Error(w, r, errs.NewNotFound("PAYMENT_REQUEST_NOT_FOUND"), nil)
-		return
-	}
-
-	// Check access
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: pr.ProjectID,
-		UserID:    user.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
-		return
-	}
-
-	role := getParticipantRoleString(access.ParticipantRole)
-	if role != string(entity.OrganizationRoleEnumEXECUTINGAGENCY) {
-		response.Error(w, r, errs.NewForbidden("EXECUTING_AGENCY_REQUIRED"), nil)
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -334,26 +263,9 @@ func (h *Handler) Disburse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get request to check contract
-	pr, err := h.store.GetPaymentRequestWithContract(r.Context(), requestID)
+	access, err := h.policy.CanDisbursePayment(r.Context(), user.ID, requestID)
 	if err != nil {
-		response.Error(w, r, errs.NewNotFound("PAYMENT_REQUEST_NOT_FOUND"), nil)
-		return
-	}
-
-	// Check access
-	access, err := h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: pr.ProjectID,
-		UserID:    user.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
-		return
-	}
-
-	role := getParticipantRoleString(access.ParticipantRole)
-	if role != string(entity.OrganizationRoleEnumLOANPROVIDER) {
-		response.Error(w, r, errs.NewForbidden("LOAN_PROVIDER_REQUIRED"), nil)
+		response.Error(w, r, err, nil)
 		return
 	}
 
@@ -391,13 +303,8 @@ func (h *Handler) GetPaymentSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check access
-	_, err = h.store.GetUserProjectAccess(r.Context(), entity.GetUserProjectAccessParams{
-		ProjectID: projectID,
-		UserID:    user.ID,
-	})
-	if err != nil {
-		response.Error(w, r, errs.NewForbidden("NOT_PROJECT_PARTICIPANT"), nil)
+	if err := h.policy.CanViewFinanceProject(r.Context(), user.ID, projectID); err != nil {
+		response.Error(w, r, err, nil)
 		return
 	}
 
