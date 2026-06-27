@@ -83,6 +83,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.UserID = userClaims.ID
+
 	res, err := h.svc.Create(r.Context(), req, callerOrgID)
 	if err != nil {
 		response.Error(w, r, err, nil)
@@ -165,6 +167,11 @@ func (h *Handler) ConfigureSettings(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, r, err, nil)
 		return
 	}
+	access, err := h.policy.RequireProjectParticipant(r.Context(), userClaims.ID, projectId, "NO_PROJECT_ACCESS")
+	if err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
 
 	if appErr := utils.ValidateStruct(r.Body, &req); appErr != nil {
 		response.ValidationFailed(w, r, appErr.ValidationErrors)
@@ -172,6 +179,8 @@ func (h *Handler) ConfigureSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.ProjectID = projectId
+	req.UserID = userClaims.ID
+	req.ActorOrgID = access.OrganizationID
 
 	res, err := h.svc.ConfigureSettings(r.Context(), req)
 	if err != nil {
@@ -203,6 +212,11 @@ func (h *Handler) AssignExecutingAgency(w http.ResponseWriter, r *http.Request) 
 		response.Error(w, r, err, nil)
 		return
 	}
+	access, err := h.policy.RequireProjectParticipant(r.Context(), userClaims.ID, projectId, "NO_PROJECT_ACCESS")
+	if err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
 
 	if appErr := utils.ValidateStruct(r.Body, &req); appErr != nil {
 		response.ValidationFailed(w, r, appErr.ValidationErrors)
@@ -210,6 +224,8 @@ func (h *Handler) AssignExecutingAgency(w http.ResponseWriter, r *http.Request) 
 	}
 
 	req.ProjectID = projectId
+	req.UserID = userClaims.ID
+	req.ActorOrgID = access.OrganizationID
 
 	res, err := h.svc.AssignExecutingAgency(r.Context(), req)
 	if err != nil {
@@ -241,6 +257,11 @@ func (h *Handler) AssignVendor(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, r, err, nil)
 		return
 	}
+	access, err := h.policy.RequireProjectParticipant(r.Context(), userClaims.ID, projectId, "NO_PROJECT_ACCESS")
+	if err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
 
 	if appErr := utils.ValidateStruct(r.Body, &req); appErr != nil {
 		response.ValidationFailed(w, r, appErr.ValidationErrors)
@@ -248,6 +269,8 @@ func (h *Handler) AssignVendor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.ProjectID = projectId
+	req.UserID = userClaims.ID
+	req.ActorOrgID = access.OrganizationID
 
 	res, err := h.svc.AssignVendor(r.Context(), req)
 	if err != nil {
@@ -279,6 +302,11 @@ func (h *Handler) AssignAuditor(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, r, err, nil)
 		return
 	}
+	access, err := h.policy.RequireProjectParticipant(r.Context(), userClaims.ID, projectId, "NO_PROJECT_ACCESS")
+	if err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
 
 	if appErr := utils.ValidateStruct(r.Body, &req); appErr != nil {
 		response.ValidationFailed(w, r, appErr.ValidationErrors)
@@ -286,6 +314,8 @@ func (h *Handler) AssignAuditor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.ProjectID = projectId
+	req.UserID = userClaims.ID
+	req.ActorOrgID = access.OrganizationID
 
 	res, err := h.svc.AssignAuditor(r.Context(), req)
 	if err != nil {
@@ -317,6 +347,11 @@ func (h *Handler) AssignGovPartners(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, r, err, nil)
 		return
 	}
+	access, err := h.policy.RequireProjectParticipant(r.Context(), userClaims.ID, projectId, "NO_PROJECT_ACCESS")
+	if err != nil {
+		response.Error(w, r, err, nil)
+		return
+	}
 
 	if appErr := utils.ValidateStruct(r.Body, &req); appErr != nil {
 		response.ValidationFailed(w, r, appErr.ValidationErrors)
@@ -324,6 +359,8 @@ func (h *Handler) AssignGovPartners(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.ProjectID = projectId
+	req.UserID = userClaims.ID
+	req.ActorOrgID = access.OrganizationID
 
 	res, err := h.svc.AssignGovPartners(r.Context(), req)
 	if err != nil {

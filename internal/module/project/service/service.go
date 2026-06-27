@@ -6,6 +6,7 @@ import (
 	"database/sql"
 
 	"investment_monitoring/config"
+	"investment_monitoring/internal/audit"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 
@@ -15,12 +16,14 @@ import (
 
 type ProjectService struct {
 	store *entity.SQLStore
+	audit *audit.Service
 	cfg   *config.Config
 }
 
 func NewService(store *entity.SQLStore, cfg *config.Config) *ProjectService {
 	return &ProjectService{
 		store: store,
+		audit: audit.NewService(store),
 		cfg:   cfg,
 	}
 }
@@ -124,7 +127,19 @@ func (s *ProjectService) Create(ctx context.Context, params CreateProjectParams,
 			},
 		}
 
-		return nil
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  callerOrgID,
+			Action:      audit.ActionCreateProject,
+			EntityType:  audit.EntityProject,
+			EntityID:    project.ID,
+			AfterData: map[string]any{
+				"projectId":      project.ID,
+				"contractId":     contract.ID,
+				"name":           project.Name,
+				"loanProviderId": params.LoanProviderID,
+			},
+		})
 	})
 
 	if err != nil {
@@ -295,12 +310,46 @@ func (s *ProjectService) ConfigureSettings(ctx context.Context, params Configure
 		return ProjectSettingsReturn{}, errs.NewInternalServerError(err)
 	}
 
-	settings, err := s.store.UpsertProjectSettings(ctx, entity.UpsertProjectSettingsParams{
-		ProjectID:        params.ProjectID,
-		StartDate:        params.StartDate,
-		BaselineDeadline: params.BaselineDeadline,
-		TotalBudget:      params.TotalBudget,
-		Currency:         params.Currency,
+	beforeSettings, beforeErr := s.store.GetProjectSettingsByProjectID(ctx, params.ProjectID)
+	if beforeErr != nil && beforeErr != sql.ErrNoRows {
+		return ProjectSettingsReturn{}, errs.NewInternalServerError(beforeErr)
+	}
+
+	var settings entity.ProjectSetting
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		var txErr error
+		settings, txErr = q.UpsertProjectSettings(ctx, entity.UpsertProjectSettingsParams{
+			ProjectID:        params.ProjectID,
+			StartDate:        params.StartDate,
+			BaselineDeadline: params.BaselineDeadline,
+			TotalBudget:      params.TotalBudget,
+			Currency:         params.Currency,
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		var beforeData any
+		if beforeErr == nil {
+			beforeData = beforeSettings
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.ActorOrgID,
+			Action:      audit.ActionConfigureProject,
+			EntityType:  audit.EntityProject,
+			EntityID:    params.ProjectID,
+			BeforeData:  beforeData,
+			AfterData: map[string]any{
+				"settingsId":       settings.ID,
+				"projectId":        settings.ProjectID,
+				"startDate":        settings.StartDate,
+				"baselineDeadline": settings.BaselineDeadline,
+				"totalBudget":      settings.TotalBudget,
+				"currency":         settings.Currency,
+			},
+		})
 	})
 	if err != nil {
 		return ProjectSettingsReturn{}, errs.NewInternalServerError(err)
@@ -338,9 +387,29 @@ func (s *ProjectService) AssignExecutingAgency(ctx context.Context, params Assig
 		return AssignmentReturn{}, errs.NewBadRequest("ORGANIZATION_NOT_EXECUTING_AGENCY")
 	}
 
-	_, err = s.store.AssignExecutingAgency(ctx, entity.AssignExecutingAgencyParams{
-		ID:                           contract.ID,
-		ExecutingAgencyParticipantID: uuid.NullUUID{UUID: params.ExecutingAgencyID, Valid: true},
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		_, txErr := q.AssignExecutingAgency(ctx, entity.AssignExecutingAgencyParams{
+			ID:                           contract.ID,
+			ExecutingAgencyParticipantID: uuid.NullUUID{UUID: params.ExecutingAgencyID, Valid: true},
+		})
+		if txErr != nil {
+			return txErr
+		}
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.ActorOrgID,
+			Action:      audit.ActionAssignExecutingAgency,
+			EntityType:  audit.EntityContract,
+			EntityID:    contract.ID,
+			BeforeData: map[string]any{
+				"executingAgencyId": contract.ExecutingAgencyParticipantID,
+			},
+			AfterData: map[string]any{
+				"projectId":          params.ProjectID,
+				"executingAgencyId":  params.ExecutingAgencyID,
+				"executingAgencyOrg": org.Name,
+			},
+		})
 	})
 	if err != nil {
 		return AssignmentReturn{}, errs.NewInternalServerError(err)
@@ -389,11 +458,35 @@ func (s *ProjectService) AssignVendor(ctx context.Context, params AssignVendorPa
 		return AssignmentReturn{}, errs.NewBadRequest("ORGANIZATION_NOT_CONTRACTOR")
 	}
 
-	_, err = s.store.AssignVendorToContract(ctx, entity.AssignVendorToContractParams{
-		ID:                  contract.ID,
-		VendorParticipantID: uuid.NullUUID{UUID: params.VendorOrgID, Valid: true},
-		ContractValue:       sql.NullInt64{Int64: params.ContractValue, Valid: true},
-		ContractDocUrl:      sql.NullString{String: params.ContractDocUrl, Valid: true},
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		_, txErr := q.AssignVendorToContract(ctx, entity.AssignVendorToContractParams{
+			ID:                  contract.ID,
+			VendorParticipantID: uuid.NullUUID{UUID: params.VendorOrgID, Valid: true},
+			ContractValue:       sql.NullInt64{Int64: params.ContractValue, Valid: true},
+			ContractDocUrl:      sql.NullString{String: params.ContractDocUrl, Valid: true},
+		})
+		if txErr != nil {
+			return txErr
+		}
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.ActorOrgID,
+			Action:      audit.ActionAssignVendor,
+			EntityType:  audit.EntityContract,
+			EntityID:    contract.ID,
+			BeforeData: map[string]any{
+				"vendorOrgId":    contract.VendorParticipantID,
+				"contractValue":  contract.ContractValue,
+				"contractDocUrl": contract.ContractDocUrl,
+			},
+			AfterData: map[string]any{
+				"projectId":      params.ProjectID,
+				"vendorOrgId":    params.VendorOrgID,
+				"vendorName":     org.Name,
+				"contractValue":  params.ContractValue,
+				"contractDocUrl": params.ContractDocUrl,
+			},
+		})
 	})
 	if err != nil {
 		return AssignmentReturn{}, errs.NewInternalServerError(err)
@@ -428,9 +521,29 @@ func (s *ProjectService) AssignAuditor(ctx context.Context, params AssignAuditor
 		return AssignmentReturn{}, errs.NewBadRequest("ORGANIZATION_NOT_AUDITOR")
 	}
 
-	_, err = s.store.AssignAuditor(ctx, entity.AssignAuditorParams{
-		ID:                   contract.ID,
-		AuditorParticipantID: uuid.NullUUID{UUID: params.AuditorOrgID, Valid: true},
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		_, txErr := q.AssignAuditor(ctx, entity.AssignAuditorParams{
+			ID:                   contract.ID,
+			AuditorParticipantID: uuid.NullUUID{UUID: params.AuditorOrgID, Valid: true},
+		})
+		if txErr != nil {
+			return txErr
+		}
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.ActorOrgID,
+			Action:      audit.ActionAssignAuditor,
+			EntityType:  audit.EntityContract,
+			EntityID:    contract.ID,
+			BeforeData: map[string]any{
+				"auditorOrgId": contract.AuditorParticipantID,
+			},
+			AfterData: map[string]any{
+				"projectId":    params.ProjectID,
+				"auditorOrgId": params.AuditorOrgID,
+				"auditorName":  org.Name,
+			},
+		})
 	})
 	if err != nil {
 		return AssignmentReturn{}, errs.NewInternalServerError(err)
@@ -467,6 +580,11 @@ func (s *ProjectService) AssignGovPartners(ctx context.Context, params AssignGov
 		}
 	}
 
+	existingPartners, err := s.store.GetGovParticipantsByContractID(ctx, contract.ID)
+	if err != nil {
+		return AssignmentReturn{}, errs.NewInternalServerError(err)
+	}
+
 	// Execute in transaction: delete existing, add new
 	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
 		// Delete existing gov partners
@@ -486,7 +604,20 @@ func (s *ProjectService) AssignGovPartners(ctx context.Context, params AssignGov
 			}
 		}
 
-		return nil
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.ActorOrgID,
+			Action:      audit.ActionAssignGovPartners,
+			EntityType:  audit.EntityContract,
+			EntityID:    contract.ID,
+			BeforeData: map[string]any{
+				"govPartners": existingPartners,
+			},
+			AfterData: map[string]any{
+				"projectId":     params.ProjectID,
+				"govPartnerIds": params.GovPartnerIDs,
+			},
+		})
 	})
 
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"investment_monitoring/config"
+	"investment_monitoring/internal/audit"
 	sla_service "investment_monitoring/internal/module/support/sla/service"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
@@ -18,6 +19,7 @@ import (
 
 type TrackerService struct {
 	store *entity.SQLStore
+	audit *audit.Service
 	sla   *sla_service.Service
 	cfg   *config.Config
 }
@@ -25,6 +27,7 @@ type TrackerService struct {
 func NewService(store *entity.SQLStore, cfg *config.Config) *TrackerService {
 	return &TrackerService{
 		store: store,
+		audit: audit.NewService(store),
 		sla:   sla_service.NewService(store),
 		cfg:   cfg,
 	}
@@ -105,7 +108,24 @@ func (s *TrackerService) CreateTicket(ctx context.Context, params CreateTicketPa
 			DueAt:      enteredAt.Add(sla_service.DefaultTicketSLADuration),
 			Status:     sla_service.StatusOnTrack,
 		})
-		return txErr
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.ContractorID,
+			Action:      audit.ActionCreateTicket,
+			EntityType:  audit.EntityTicket,
+			EntityID:    ticket.ID,
+			AfterData: map[string]any{
+				"ticketId":   ticket.ID,
+				"title":      ticket.Title,
+				"contractId": ticket.ContractID,
+				"status":     entity.TicketStatusEnumOPEN,
+				"slaDueAt":   enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			},
+		})
 	})
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
@@ -410,7 +430,26 @@ func (s *TrackerService) AssignTicket(ctx context.Context, params AssignTicketPa
 			DueAt:      enteredAt.Add(sla_service.DefaultTicketSLADuration),
 			Status:     sla_service.StatusOnTrack,
 		})
-		return txErr
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.OrgID,
+			Action:      audit.ActionAssignTicket,
+			EntityType:  audit.EntityTicket,
+			EntityID:    params.TicketID,
+			BeforeData: map[string]any{
+				"status": currentStatus,
+			},
+			AfterData: map[string]any{
+				"status":        nextStatus,
+				"assignedOrgId": params.AssignToOrgID,
+				"assignedName":  assignee.Name,
+				"slaDueAt":      enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			},
+		})
 	})
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
@@ -487,9 +526,27 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 				ResolvedAt: sql.NullTime{Time: time.Now(), Valid: true},
 			})
 			if txErr == sql.ErrNoRows {
-				return nil
+				txErr = nil
 			}
-			return txErr
+			if txErr != nil {
+				return txErr
+			}
+
+			return s.audit.RecordTx(ctx, q, audit.RecordParams{
+				ActorUserID: params.UserID,
+				ActorOrgID:  params.OrgID,
+				Action:      audit.ActionUpdateTicketStatus,
+				EntityType:  audit.EntityTicket,
+				EntityID:    params.TicketID,
+				BeforeData: map[string]any{
+					"status": currentStatus,
+				},
+				AfterData: map[string]any{
+					"ticketLogId": log.ID,
+					"status":      newStatus,
+					"description": params.Description,
+				},
+			})
 		}
 
 		enteredAt := time.Now()
@@ -502,7 +559,26 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 			DueAt:      enteredAt.Add(sla_service.DefaultTicketSLADuration),
 			Status:     sla_service.StatusOnTrack,
 		})
-		return txErr
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.OrgID,
+			Action:      audit.ActionUpdateTicketStatus,
+			EntityType:  audit.EntityTicket,
+			EntityID:    params.TicketID,
+			BeforeData: map[string]any{
+				"status": currentStatus,
+			},
+			AfterData: map[string]any{
+				"ticketLogId": log.ID,
+				"status":      newStatus,
+				"description": params.Description,
+				"slaDueAt":    enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			},
+		})
 	})
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
@@ -570,9 +646,25 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 			ResolvedAt: sql.NullTime{Time: time.Now(), Valid: true},
 		})
 		if txErr == sql.ErrNoRows {
-			return nil
+			txErr = nil
 		}
-		return txErr
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.OrgID,
+			Action:      audit.ActionCloseTicket,
+			EntityType:  audit.EntityTicket,
+			EntityID:    params.TicketID,
+			BeforeData: map[string]any{
+				"status": currentStatus,
+			},
+			AfterData: map[string]any{
+				"status": nextStatus,
+			},
+		})
 	})
 	if err != nil {
 		return TicketReturn{}, errs.NewInternalServerError(err)

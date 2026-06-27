@@ -210,19 +210,25 @@ ON_TRACK      jika masih dalam batas normal
 
 ## 4. Audit Log Global
 
-### Status Saat Ini
+### Status Implementasi
 
-Beberapa module sudah punya riwayat spesifik:
+Sudah dibuat baseline audit log global untuk mencatat perubahan penting lintas module. Audit global ini melengkapi riwayat spesifik yang sudah ada:
 
 - `ticket_logs` untuk ticket.
 - `progress_logs` untuk laporan progress.
 - approval timestamp di `payment_requests`.
 
-Namun belum ada audit log global untuk semua perubahan penting.
+Audit global sekarang menyimpan actor, organisasi, action, entity, snapshot data sebelum/sesudah, dan metadata request.
 
-### Yang Perlu Dibuat
+### Yang Sudah Dibuat
 
-Migration table:
+Migration baru:
+
+```text
+migrations/20260627093000_add_audit_logs.sql
+```
+
+Table:
 
 ```text
 audit_logs
@@ -244,27 +250,65 @@ Package:
 
 ```text
 internal/audit/
-  service.go
   middleware.go
+  service.go
   types.go
 ```
 
-Integrasikan ke action penting:
+Query sqlc:
+
+```text
+internal/repository/queries/audit.sql
+- CreateAuditLog
+- ListAuditLogsByEntity
+- ListAuditLogsByActor
+```
+
+Middleware:
+
+- `audit.Middleware` dipasang di root router setelah `chi` request ID.
+- Metadata yang disimpan: `request_id`, `ip_address`, dan `user_agent`.
+
+Integrasi service:
 
 - create project;
-- assign participant;
 - configure settings;
+- assign executing agency;
+- assign vendor;
+- assign auditor;
+- assign gov partners;
 - submit progress;
 - validate progress;
 - create/assign/close ticket;
-- approve/disburse payment;
-- invite member.
+- update ticket status;
+- create payment request;
+- approve payment auditor;
+- approve payment executing agency;
+- disburse payment;
+- create organization;
+- invite organization member.
+
+Audit ditulis melalui:
+
+```go
+Record(ctx, params)
+RecordTx(ctx, q, params)
+```
+
+Untuk flow yang sudah memakai transaksi, audit dicatat dalam transaksi yang sama agar perubahan bisnis dan audit tidak berbeda state.
 
 ### Manfaat
 
 - Sistem lebih accountable.
 - Cocok untuk proyek lintas lembaga dan pendanaan internasional.
 - Memperkuat pembahasan auditability di jurnal.
+
+### Sisa Peningkatan
+
+- Tambahkan endpoint admin untuk membaca audit log per entity, actor, project, atau request id.
+- Tambahkan audit policy: siapa yang boleh melihat audit log.
+- Tambahkan correlation id antar event jika nanti memakai outbox/event-driven architecture.
+- Tambahkan redaction untuk field sensitif sebelum masuk `before_data` dan `after_data`.
 
 ---
 

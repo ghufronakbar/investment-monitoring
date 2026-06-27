@@ -273,6 +273,7 @@ func (h *Handler) SubmitProgress(w http.ResponseWriter, r *http.Request) {
 
 	req.TaskID = taskId
 	req.VendorID = access.OrganizationID // From JWT context via access check
+	req.UserID = userClaims.ID
 
 	res, err := h.svc.SubmitProgress(r.Context(), req)
 	if err != nil {
@@ -385,6 +386,7 @@ func (h *Handler) ValidateProgress(w http.ResponseWriter, r *http.Request) {
 
 	req.ProgressLogID = logId
 	req.AuditorID = access.OrganizationID // From JWT context via access check
+	req.UserID = userClaims.ID
 
 	res, err := h.svc.ValidateProgress(r.Context(), req)
 	if err != nil {

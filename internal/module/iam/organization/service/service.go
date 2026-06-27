@@ -6,6 +6,7 @@ import (
 	"database/sql"
 
 	"investment_monitoring/config"
+	"investment_monitoring/internal/audit"
 	mail_service "investment_monitoring/internal/module/support/mail/service"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
@@ -15,6 +16,7 @@ import (
 
 type OrganizationService struct {
 	store   *entity.SQLStore
+	audit   *audit.Service
 	mailSvc *mail_service.MailService
 	cfg     *config.Config
 }
@@ -22,6 +24,7 @@ type OrganizationService struct {
 func NewService(store *entity.SQLStore, mailSvc *mail_service.MailService, cfg *config.Config) *OrganizationService {
 	return &OrganizationService{
 		store:   store,
+		audit:   audit.NewService(store),
 		mailSvc: mailSvc,
 		cfg:     cfg,
 	}
@@ -71,6 +74,23 @@ func (s *OrganizationService) Create(ctx context.Context, params CreateOrganizat
 			OrganizationID: org.ID,
 		})
 		if err != nil {
+			return err
+		}
+
+		if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.ActorOrgID,
+			Action:      audit.ActionCreateOrganization,
+			EntityType:  audit.EntityOrganization,
+			EntityID:    org.ID,
+			AfterData: map[string]any{
+				"organizationId": org.ID,
+				"organization":   org.Name,
+				"role":           org.Role,
+				"adminUserId":    user.ID,
+				"adminEmail":     user.Email,
+			},
+		}); err != nil {
 			return err
 		}
 
@@ -174,7 +194,21 @@ func (s *OrganizationService) InviteMember(ctx context.Context, params InviteMem
 				},
 			}
 
-			return nil
+			return s.audit.RecordTx(ctx, q, audit.RecordParams{
+				ActorUserID: params.UserID,
+				ActorOrgID:  params.ActorOrgID,
+				Action:      audit.ActionInviteOrganizationUser,
+				EntityType:  audit.EntityUser,
+				EntityID:    user.ID,
+				AfterData: map[string]any{
+					"organizationId": params.OrganizationID,
+					"organization":   org.Name,
+					"userId":         user.ID,
+					"email":          user.Email,
+					"memberRole":     membership.Role,
+					"isNewUser":      true,
+				},
+			})
 		})
 
 		if err != nil {
@@ -193,11 +227,34 @@ func (s *OrganizationService) InviteMember(ctx context.Context, params InviteMem
 			return result, errs.NewBadRequest("USER_ALREADY_MEMBER")
 		}
 
-		// Add existing user to organization
-		membership, err := s.store.CreateOrganizationMember(ctx, entity.CreateOrganizationMemberParams{
-			Role:           entity.MemberRoleEnumMEMBER,
-			UserID:         userID,
-			OrganizationID: params.OrganizationID,
+		var membership entity.OrganizationMember
+		err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+			var txErr error
+			// Add existing user to organization
+			membership, txErr = q.CreateOrganizationMember(ctx, entity.CreateOrganizationMemberParams{
+				Role:           entity.MemberRoleEnumMEMBER,
+				UserID:         userID,
+				OrganizationID: params.OrganizationID,
+			})
+			if txErr != nil {
+				return txErr
+			}
+
+			return s.audit.RecordTx(ctx, q, audit.RecordParams{
+				ActorUserID: params.UserID,
+				ActorOrgID:  params.ActorOrgID,
+				Action:      audit.ActionInviteOrganizationUser,
+				EntityType:  audit.EntityUser,
+				EntityID:    userID,
+				AfterData: map[string]any{
+					"organizationId": params.OrganizationID,
+					"organization":   org.Name,
+					"userId":         userID,
+					"email":          existingUser.Email,
+					"memberRole":     membership.Role,
+					"isNewUser":      false,
+				},
+			})
 		})
 		if err != nil {
 			return result, errs.NewInternalServerError(err)

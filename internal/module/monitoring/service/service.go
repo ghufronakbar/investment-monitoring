@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"investment_monitoring/config"
+	"investment_monitoring/internal/audit"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
@@ -17,12 +18,14 @@ import (
 
 type MonitoringService struct {
 	store *entity.SQLStore
+	audit *audit.Service
 	cfg   *config.Config
 }
 
 func NewService(store *entity.SQLStore, cfg *config.Config) *MonitoringService {
 	return &MonitoringService{
 		store: store,
+		audit: audit.NewService(store),
 		cfg:   cfg,
 	}
 }
@@ -388,13 +391,35 @@ func (s *MonitoringService) SubmitProgress(ctx context.Context, params SubmitPro
 		return result, errs.NewBadRequest("TASK_HAS_PENDING_LOG")
 	}
 
-	// Create progress log with snapshot (INSERT...SELECT in SQL)
-	log, err := s.store.CreateProgressLog(ctx, entity.CreateProgressLogParams{
-		Report:             params.Report,
-		ProgressPercentage: int32(params.ProgressPercentage),
-		EvidenceImageUrls:  params.EvidenceImageUrls,
-		VendorID:           params.VendorID,
-		ID:                 params.TaskID, // $5 = task_item_id for SELECT
+	var log entity.ProgressLog
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		var txErr error
+		// Create progress log with snapshot (INSERT...SELECT in SQL)
+		log, txErr = q.CreateProgressLog(ctx, entity.CreateProgressLogParams{
+			Report:             params.Report,
+			ProgressPercentage: int32(params.ProgressPercentage),
+			EvidenceImageUrls:  params.EvidenceImageUrls,
+			VendorID:           params.VendorID,
+			ID:                 params.TaskID, // $5 = task_item_id for SELECT
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.VendorID,
+			Action:      audit.ActionSubmitProgress,
+			EntityType:  audit.EntityProgressLog,
+			EntityID:    log.ID,
+			AfterData: map[string]any{
+				"progressLogId":      log.ID,
+				"taskItemId":         params.TaskID,
+				"taskTitle":          task.Title,
+				"progressPercentage": params.ProgressPercentage,
+				"vendorId":           params.VendorID,
+			},
+		})
 	})
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
@@ -561,12 +586,41 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 		commentStr = sql.NullString{String: *params.Comment, Valid: true}
 	}
 
-	validation, err := s.store.CreateProgressValidation(ctx, entity.CreateProgressValidationParams{
-		IsAccepted:             isAccepted,
-		Comment:                commentStr,
-		RealProgressPercentage: int32(params.RealProgressPercentage),
-		ProgressLogID:          log.ID,
-		AuditorID:              params.AuditorID,
+	var validation entity.ProgressValidation
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		var txErr error
+		validation, txErr = q.CreateProgressValidation(ctx, entity.CreateProgressValidationParams{
+			IsAccepted:             isAccepted,
+			Comment:                commentStr,
+			RealProgressPercentage: int32(params.RealProgressPercentage),
+			ProgressLogID:          log.ID,
+			AuditorID:              params.AuditorID,
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.AuditorID,
+			Action:      audit.ActionValidateProgress,
+			EntityType:  audit.EntityProgressLog,
+			EntityID:    log.ID,
+			BeforeData: map[string]any{
+				"progressLogId":      log.ID,
+				"claimedPercentage":  claimedPercentage,
+				"validationState":    workflow.MonitoringStatePending,
+				"progressReportDate": log.CreatedAt,
+			},
+			AfterData: map[string]any{
+				"validationId":           validation.ID,
+				"isAccepted":             validation.IsAccepted,
+				"claimedPercentage":      claimedPercentage,
+				"realProgressPercentage": validation.RealProgressPercentage,
+				"validationState":        nextState,
+				"auditorId":              params.AuditorID,
+			},
+		})
 	})
 	if err != nil {
 		return result, errs.NewInternalServerError(err)

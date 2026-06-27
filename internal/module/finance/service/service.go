@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"investment_monitoring/config"
+	"investment_monitoring/internal/audit"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
@@ -16,12 +17,14 @@ import (
 
 type FinanceService struct {
 	store *entity.SQLStore
+	audit *audit.Service
 	cfg   *config.Config
 }
 
 func NewService(store *entity.SQLStore, cfg *config.Config) *FinanceService {
 	return &FinanceService{
 		store: store,
+		audit: audit.NewService(store),
 		cfg:   cfg,
 	}
 }
@@ -82,12 +85,33 @@ func (s *FinanceService) CreatePaymentRequest(ctx context.Context, params Create
 		return result, errs.NewBadRequest("AMOUNT_EXCEEDS_AVAILABLE")
 	}
 
-	// Create payment request
-	pr, err := s.store.CreatePaymentRequest(ctx, entity.CreatePaymentRequestParams{
-		Title:          params.Title,
-		Amount:         params.Amount,
-		InvoiceFileUrl: params.InvoiceFileUrl,
-		ContractID:     contract.ID,
+	var pr entity.PaymentRequest
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		var txErr error
+		pr, txErr = q.CreatePaymentRequest(ctx, entity.CreatePaymentRequestParams{
+			Title:          params.Title,
+			Amount:         params.Amount,
+			InvoiceFileUrl: params.InvoiceFileUrl,
+			ContractID:     contract.ID,
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.ContractorID,
+			Action:      audit.ActionCreatePaymentRequest,
+			EntityType:  audit.EntityPaymentRequest,
+			EntityID:    pr.ID,
+			AfterData: map[string]any{
+				"paymentRequestId": pr.ID,
+				"contractId":       contract.ID,
+				"title":            pr.Title,
+				"amount":           pr.Amount,
+				"status":           pr.Status,
+			},
+		})
 	})
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
@@ -268,12 +292,32 @@ func (s *FinanceService) ApproveByAuditor(ctx context.Context, params ApprovalPa
 		return PaymentRequestReturn{}, errs.NewBadRequest("INVALID_STATUS_TRANSITION")
 	}
 
-	// Update
-	_, err = s.store.ApproveByAuditor(ctx, entity.ApproveByAuditorParams{
-		ID:            params.RequestID,
-		Status:        newStatus,
-		AuditorOrgID:  uuid.NullUUID{UUID: params.OrgID, Valid: true},
-		AuditorUserID: uuid.NullUUID{UUID: params.UserID, Valid: true},
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		_, txErr := q.ApproveByAuditor(ctx, entity.ApproveByAuditorParams{
+			ID:            params.RequestID,
+			Status:        newStatus,
+			AuditorOrgID:  uuid.NullUUID{UUID: params.OrgID, Valid: true},
+			AuditorUserID: uuid.NullUUID{UUID: params.UserID, Valid: true},
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.OrgID,
+			Action:      audit.ActionApprovePaymentAuditor,
+			EntityType:  audit.EntityPaymentRequest,
+			EntityID:    params.RequestID,
+			BeforeData: map[string]any{
+				"status": prWithContract.Status,
+			},
+			AfterData: map[string]any{
+				"status":       newStatus,
+				"action":       params.Action,
+				"auditorOrgId": params.OrgID,
+			},
+		})
 	})
 	if err != nil {
 		return PaymentRequestReturn{}, errs.NewInternalServerError(err)
@@ -307,12 +351,32 @@ func (s *FinanceService) ApproveByAgency(ctx context.Context, params ApprovalPar
 		return PaymentRequestReturn{}, errs.NewBadRequest("INVALID_STATUS_TRANSITION")
 	}
 
-	// Update
-	_, err = s.store.ApproveByAgency(ctx, entity.ApproveByAgencyParams{
-		ID:                    params.RequestID,
-		Status:                newStatus,
-		ExecutingAgencyOrgID:  uuid.NullUUID{UUID: params.OrgID, Valid: true},
-		ExecutingAgencyUserID: uuid.NullUUID{UUID: params.UserID, Valid: true},
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		_, txErr := q.ApproveByAgency(ctx, entity.ApproveByAgencyParams{
+			ID:                    params.RequestID,
+			Status:                newStatus,
+			ExecutingAgencyOrgID:  uuid.NullUUID{UUID: params.OrgID, Valid: true},
+			ExecutingAgencyUserID: uuid.NullUUID{UUID: params.UserID, Valid: true},
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.OrgID,
+			Action:      audit.ActionApprovePaymentAgency,
+			EntityType:  audit.EntityPaymentRequest,
+			EntityID:    params.RequestID,
+			BeforeData: map[string]any{
+				"status": prWithContract.Status,
+			},
+			AfterData: map[string]any{
+				"status":               newStatus,
+				"action":               params.Action,
+				"executingAgencyOrgId": params.OrgID,
+			},
+		})
 	})
 	if err != nil {
 		return PaymentRequestReturn{}, errs.NewInternalServerError(err)
@@ -339,11 +403,32 @@ func (s *FinanceService) Disburse(ctx context.Context, params DisburseParams) (P
 	}
 
 	// Update with payment proof
-	_, err = s.store.DisburseByLoanProvider(ctx, entity.DisburseByLoanProviderParams{
-		ID:                    params.RequestID,
-		LoanProviderOrgID:     uuid.NullUUID{UUID: params.OrgID, Valid: true},
-		LoanProviderUserID:    uuid.NullUUID{UUID: params.UserID, Valid: true},
-		PaymentProofImageUrls: params.PaymentProofImageUrls,
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		_, txErr := q.DisburseByLoanProvider(ctx, entity.DisburseByLoanProviderParams{
+			ID:                    params.RequestID,
+			LoanProviderOrgID:     uuid.NullUUID{UUID: params.OrgID, Valid: true},
+			LoanProviderUserID:    uuid.NullUUID{UUID: params.UserID, Valid: true},
+			PaymentProofImageUrls: params.PaymentProofImageUrls,
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			ActorUserID: params.UserID,
+			ActorOrgID:  params.OrgID,
+			Action:      audit.ActionDisbursePayment,
+			EntityType:  audit.EntityPaymentRequest,
+			EntityID:    params.RequestID,
+			BeforeData: map[string]any{
+				"status": prWithContract.Status,
+			},
+			AfterData: map[string]any{
+				"status":                entity.PaymentRequestStatusEnumPAID,
+				"loanProviderOrgId":     params.OrgID,
+				"paymentProofImageUrls": params.PaymentProofImageUrls,
+			},
+		})
 	})
 	if err != nil {
 		return PaymentRequestReturn{}, errs.NewInternalServerError(err)

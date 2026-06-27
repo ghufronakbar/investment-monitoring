@@ -30,6 +30,9 @@ type Querier interface {
 	CountExample(ctx context.Context, search string) (int64, error)
 	// Count total organizations
 	CountOrganizations(ctx context.Context) (int64, error)
+	// internal/repository/queries/audit.sql
+	// SQLC queries for global audit logging
+	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	// ===== CONTRACT QUERIES =====
 	CreateContract(ctx context.Context, arg CreateContractParams) (Contract, error)
 	CreateExample(ctx context.Context, arg CreateExampleParams) (Example, error)
@@ -158,6 +161,8 @@ type Querier interface {
 	GetValidationByProgressLogID(ctx context.Context, progressLogID uuid.UUID) (ProgressValidation, error)
 	// Check if there's any pending payment request
 	HasPendingPaymentRequest(ctx context.Context, contractID uuid.UUID) (bool, error)
+	ListAuditLogsByActor(ctx context.Context, arg ListAuditLogsByActorParams) ([]AuditLog, error)
+	ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsByEntityParams) ([]AuditLog, error)
 	// List all organizations with pagination
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
 	ListProjects(ctx context.Context) ([]Project, error)

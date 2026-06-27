@@ -358,7 +358,7 @@ Rekomendasi:
 
 4. Audit Trail Global
 
-   Buat table `audit_logs` untuk mencatat:
+   Baseline `audit_logs` sudah dibuat untuk mencatat:
 
    - actor user id;
    - actor organization id;
@@ -370,7 +370,7 @@ Rekomendasi:
    - IP/user agent;
    - timestamp.
 
-   Ini akan sangat kuat untuk jurnal karena sistem lintas negara/lembaga memerlukan accountability.
+   Ini sangat kuat untuk jurnal karena sistem lintas negara/lembaga memerlukan accountability. Tahap berikutnya adalah menambahkan endpoint pembacaan audit log, policy akses audit, dan redaction untuk field sensitif.
 
 ### Priority 2: Formalisasi Workflow Engine Ringan
 
@@ -752,9 +752,9 @@ Jika waktu pengembangan terbatas, urutan paling efektif:
 1. Sinkronisasi docs dan route aktual.
 2. Tambahkan test untuk workflow Monitoring, Tracker, dan Finance.
 3. Lengkapi automated test untuk centralized policy layer yang sudah dibuat.
-4. Tambahkan audit_logs global.
+4. Tambahkan endpoint pembacaan audit_logs global.
 5. Perkuat finance dengan transaction lock untuk mencegah race condition.
-6. Lengkapi audit trail untuk state machine finance dan tracker.
+6. Lengkapi audit policy dan redaction untuk state machine finance dan tracker.
 7. Tambahkan Redis untuk rate limit, token blacklist, atau S-Curve cache.
 8. Tambahkan OpenAPI spec.
 9. Tambahkan dashboard risk indicator.

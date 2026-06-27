@@ -78,7 +78,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req organization_service.CreateOrganizationParams
 
 	// Get org membership from middleware (validates the caller is GOV_SUPERVISOR ADMIN)
-	_, err := internal_middleware.GetOrgMembershipFromContext(r.Context())
+	membership, err := internal_middleware.GetOrgMembershipFromContext(r.Context())
 	if err != nil {
 		response.Error(w, r, err, nil)
 		return
@@ -88,6 +88,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		response.ValidationFailed(w, r, appErr.ValidationErrors)
 		return
 	}
+
+	req.UserID = membership.UserID
+	req.ActorOrgID = membership.OrganizationID
 
 	res, err := h.svc.Create(r.Context(), req)
 	if err != nil {
@@ -168,6 +171,8 @@ func (h *Handler) InviteMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.OrganizationID = orgId
+	req.UserID = membership.UserID
+	req.ActorOrgID = membership.OrganizationID
 
 	res, err := h.svc.InviteMember(r.Context(), req)
 	if err != nil {

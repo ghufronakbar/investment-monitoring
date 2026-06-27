@@ -524,7 +524,7 @@ Yang belum kuat:
 - SLA tracking ticket sudah ada sebagai baseline, tetapi belum punya dashboard bottleneck, konfigurasi per state, dan escalation worker;
 - Redis belum digunakan;
 - real-time belum benar-benar real-time;
-- audit log global belum ada;
+- audit log global sudah ada sebagai baseline, tetapi belum punya endpoint pembacaan, policy akses audit, dan redaction field sensitif;
 - automated test belum ada;
 - beberapa docs dan route belum sinkron;
 - beberapa endpoint detail masih belum implemented.

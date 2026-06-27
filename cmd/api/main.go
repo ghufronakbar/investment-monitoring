@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"investment_monitoring/config"
+	"investment_monitoring/internal/audit"
 	handler "investment_monitoring/internal/http"
 	"investment_monitoring/internal/http/internal_middleware"
 	"investment_monitoring/pkg/logger"
@@ -55,6 +56,7 @@ func main() {
 	// -----------------------------
 
 	r.Use(chiMw.RequestID)
+	r.Use(audit.Middleware)
 	r.Use(internal_middleware.RequestLogger)
 	r.Use(chiMw.StripSlashes)
 	r.Use(chiMw.Recoverer)

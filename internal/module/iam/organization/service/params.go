@@ -4,17 +4,21 @@ package organization_service
 import "github.com/google/uuid"
 
 type CreateOrganizationParams struct {
-	Name       string `json:"name" validate:"required"`
-	Role       string `json:"role" validate:"required,oneof=CONTRACTOR GOV_PARTNER INDEPENDENT_AUDITOR LOAN_PROVIDER EXECUTING_AGENCY"`
-	LogoUrl    string `json:"logoUrl"`
-	AdminName  string `json:"adminName" validate:"required"`
-	AdminEmail string `json:"adminEmail" validate:"required,email"`
+	Name       string    `json:"name" validate:"required"`
+	Role       string    `json:"role" validate:"required,oneof=CONTRACTOR GOV_PARTNER INDEPENDENT_AUDITOR LOAN_PROVIDER EXECUTING_AGENCY"`
+	LogoUrl    string    `json:"logoUrl"`
+	AdminName  string    `json:"adminName" validate:"required"`
+	AdminEmail string    `json:"adminEmail" validate:"required,email"`
+	UserID     uuid.UUID `json:"-"`
+	ActorOrgID uuid.UUID `json:"-"`
 }
 
 type InviteMemberParams struct {
 	OrganizationID uuid.UUID `json:"-"` // from URL param
 	Name           string    `json:"name" validate:"required"`
 	Email          string    `json:"email" validate:"required,email"`
+	UserID         uuid.UUID `json:"-"`
+	ActorOrgID     uuid.UUID `json:"-"`
 }
 
 type GetOrganizationParams struct {

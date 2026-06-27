@@ -41,6 +41,7 @@ type DeleteTaskParams struct {
 type SubmitProgressParams struct {
 	TaskID             uuid.UUID
 	VendorID           uuid.UUID // From JWT context
+	UserID             uuid.UUID // From JWT context
 	ProgressPercentage int       `json:"progressPercentage" validate:"required,gte=0,lte=100"`
 	Report             string    `json:"report" validate:"required"`
 	EvidenceImageUrls  []string  `json:"evidenceImageUrls" validate:"required,min=1,dive,url"`
@@ -56,6 +57,7 @@ type GetProgressLogsParams struct {
 type ValidateProgressParams struct {
 	ProgressLogID          uuid.UUID
 	AuditorID              uuid.UUID // From JWT context
+	UserID                 uuid.UUID // From JWT context
 	RealProgressPercentage int       `json:"realProgressPercentage" validate:"required,gte=0,lte=100"`
 	Comment                *string   `json:"comment"`
 }

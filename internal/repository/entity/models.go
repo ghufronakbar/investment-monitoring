@@ -7,6 +7,7 @@ package entity
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -235,6 +236,21 @@ func (ns NullTicketStatusEnum) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.TicketStatusEnum), nil
+}
+
+type AuditLog struct {
+	ID          uuid.UUID       `json:"id"`
+	RequestID   sql.NullString  `json:"request_id"`
+	ActorUserID uuid.NullUUID   `json:"actor_user_id"`
+	ActorOrgID  uuid.NullUUID   `json:"actor_org_id"`
+	Action      string          `json:"action"`
+	EntityType  string          `json:"entity_type"`
+	EntityID    uuid.NullUUID   `json:"entity_id"`
+	BeforeData  json.RawMessage `json:"before_data"`
+	AfterData   json.RawMessage `json:"after_data"`
+	IpAddress   sql.NullString  `json:"ip_address"`
+	UserAgent   sql.NullString  `json:"user_agent"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 type Contract struct {
