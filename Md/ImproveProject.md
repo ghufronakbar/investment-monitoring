@@ -195,7 +195,7 @@ Nilai IT:
 
 Catatan improvement:
 
-- Formalisasi state machine status: OPEN -> ASSIGNED -> IN_PROGRESS -> RESOLVED -> CLOSED.
+- State machine status sudah mulai diformalisasi di `internal/workflow`; langkah berikutnya adalah memperketat guard transition jika proses bisnis ingin dibuat lebih strict.
 - Saat ini AddLog masih mengizinkan beberapa status dengan validasi yang relatif longgar.
 - Tambahkan SLA tracking, aging ticket, escalation, dan notifikasi.
 - Tambahkan attachment metadata, bukan hanya URL string.
@@ -382,7 +382,7 @@ Rekomendasi:
 
 1. State Machine untuk Finance
 
-   Buat transition table atau state machine di code:
+   Transition table dasar sudah dibuat di `internal/workflow`. Tahap berikutnya adalah memperluas state machine dengan alasan reject, audit event, dan guard actor.
 
    - SUBMITTED -> AUDITOR_APPROVED
    - SUBMITTED -> AUDITOR_REJECTED
@@ -754,7 +754,7 @@ Jika waktu pengembangan terbatas, urutan paling efektif:
 3. Lengkapi automated test untuk centralized policy layer yang sudah dibuat.
 4. Tambahkan audit_logs global.
 5. Perkuat finance dengan transaction lock untuk mencegah race condition.
-6. Formalisasi state machine finance dan tracker.
+6. Lengkapi audit trail untuk state machine finance dan tracker.
 7. Tambahkan Redis untuk rate limit, token blacklist, atau S-Curve cache.
 8. Tambahkan OpenAPI spec.
 9. Tambahkan dashboard risk indicator.
@@ -763,7 +763,7 @@ Jika waktu pengembangan terbatas, urutan paling efektif:
 Jika ingin cepat menaikkan kualitas jurnal, tiga improvement paling bernilai adalah:
 
 1. Audit trail global.
-2. Workflow state machine.
+2. Audit trail untuk workflow state machine.
 3. Test coverage untuk authorization dan financial workflow.
 
 Alasannya: ketiganya langsung menunjukkan maturity backend, bukan hanya penambahan fitur visual.
@@ -895,7 +895,7 @@ Bagian yang perlu ditingkatkan agar lebih matang:
 
 - automated test untuk centralized policy layer;
 - audit log global;
-- workflow state machine;
+- audit trail dan diagram untuk workflow state machine;
 - concurrency control pada finance;
 - OpenAPI dan contract test;
 - automated test coverage;

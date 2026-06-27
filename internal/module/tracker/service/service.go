@@ -8,6 +8,7 @@ import (
 
 	"investment_monitoring/config"
 	"investment_monitoring/internal/repository/entity"
+	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
@@ -308,8 +309,8 @@ func (s *TrackerService) AssignTicket(ctx context.Context, params AssignTicketPa
 		return result, errs.NewInternalServerError(err)
 	}
 
-	// Check if ticket is already closed
-	if currentStatus == entity.TicketStatusEnumCLOSED {
+	nextStatus, ok := workflow.TrackerNextStatus(currentStatus, workflow.TrackerInputAssign)
+	if !ok {
 		return result, errs.NewBadRequest("TICKET_ALREADY_CLOSED")
 	}
 
@@ -363,7 +364,7 @@ func (s *TrackerService) AssignTicket(ctx context.Context, params AssignTicketPa
 			Action:         entity.TicketLogActionEnumASSIGNED,
 			Description:    fmt.Sprintf("Assigned to %s", assignee.Name),
 			PreviousStatus: entity.NullTicketStatusEnum{TicketStatusEnum: currentStatus, Valid: true},
-			NewStatus:      entity.TicketStatusEnumASSIGNED,
+			NewStatus:      nextStatus,
 			TicketID:       params.TicketID,
 			OrganizationID: params.OrgID,
 			UserID:         params.UserID,
@@ -391,29 +392,25 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 		return result, errs.NewInternalServerError(err)
 	}
 
-	// Check if ticket is already closed
-	if currentStatus == entity.TicketStatusEnumCLOSED {
-		return result, errs.NewBadRequest("TICKET_ALREADY_CLOSED")
-	}
-
 	// Determine action and new status
 	action := entity.TicketLogActionEnumCOMMENTED
-	newStatus := currentStatus
+	transitionInput := workflow.TrackerInputComment
 
 	if params.NewStatus != nil {
-		// Validate enum value
-		validStatuses := map[string]bool{
-			string(entity.TicketStatusEnumOPEN):       true,
-			string(entity.TicketStatusEnumASSIGNED):   true,
-			string(entity.TicketStatusEnumINPROGRESS): true,
-			string(entity.TicketStatusEnumRESOLVED):   true,
-			string(entity.TicketStatusEnumCLOSED):     true,
-		}
-		if !validStatuses[*params.NewStatus] {
+		input, ok := workflow.TrackerInputForStatus(entity.TicketStatusEnum(*params.NewStatus))
+		if !ok {
 			return result, errs.NewBadRequest("INVALID_STATUS_VALUE")
 		}
 		action = entity.TicketLogActionEnumSTATUSCHANGED
-		newStatus = entity.TicketStatusEnum(*params.NewStatus)
+		transitionInput = input
+	}
+
+	newStatus, ok := workflow.TrackerNextStatus(currentStatus, transitionInput)
+	if !ok {
+		if currentStatus == entity.TicketStatusEnumCLOSED {
+			return result, errs.NewBadRequest("TICKET_ALREADY_CLOSED")
+		}
+		return result, errs.NewBadRequest("INVALID_STATUS_TRANSITION")
 	}
 
 	var attachmentUrl sql.NullString
@@ -472,8 +469,8 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 		return TicketReturn{}, errs.NewInternalServerError(err)
 	}
 
-	// Check if already closed
-	if currentStatus == entity.TicketStatusEnumCLOSED {
+	nextStatus, ok := workflow.TrackerNextStatus(currentStatus, workflow.TrackerInputClose)
+	if !ok {
 		return TicketReturn{}, errs.NewBadRequest("TICKET_ALREADY_CLOSED")
 	}
 
@@ -482,7 +479,7 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 		Action:         entity.TicketLogActionEnumRESOLVED,
 		Description:    "Ticket closed by Project Owner",
 		PreviousStatus: entity.NullTicketStatusEnum{TicketStatusEnum: currentStatus, Valid: true},
-		NewStatus:      entity.TicketStatusEnumCLOSED,
+		NewStatus:      nextStatus,
 		TicketID:       params.TicketID,
 		OrganizationID: params.OrgID,
 		UserID:         params.UserID,

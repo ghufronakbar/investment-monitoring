@@ -519,7 +519,7 @@ Yang sudah kuat:
 
 Yang belum kuat:
 
-- belum ada formal FSM engine reusable;
+- formal FSM engine reusable sudah mulai dibuat di `internal/workflow`;
 - SLA tracking belum diimplementasikan eksplisit;
 - Redis belum digunakan;
 - real-time belum benar-benar real-time;
@@ -540,15 +540,15 @@ Cara menulis:
 
 Jika ingin menaikkan kualitas jurnal dengan effort relatif kecil, buat 4 hal ini:
 
-### 10.1 Tambahkan FSM Transition Table di Code atau Docs
+### 10.1 Lengkapi FSM Transition Table di Code dan Docs
 
-Buat tabel state transition untuk:
+FSM transition engine sudah mulai tersedia di `internal/workflow`. Berikutnya, lengkapi tabel state transition formal untuk:
 
 - tracker ticket;
 - finance payment request;
 - monitoring progress validation.
 
-Minimal bisa berupa dokumentasi formal, lebih baik jika berupa function reusable.
+Minimal tambahkan diagram dan matriks transisi di dokumen jurnal, lalu perluas unit test jika transisi bisnis dibuat lebih ketat.
 
 ### 10.2 Tambahkan SLA Field untuk Ticket
 

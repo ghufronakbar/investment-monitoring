@@ -8,6 +8,7 @@ import (
 
 	"investment_monitoring/config"
 	"investment_monitoring/internal/repository/entity"
+	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
@@ -537,16 +538,18 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 		return result, errs.NewBadRequest("PROGRESS_ALREADY_VALIDATED")
 	}
 
-	// Validate: auditor cannot give higher percentage than contractor claimed
 	claimedPercentage := int(log.ProgressPercentage)
-	if params.RealProgressPercentage > claimedPercentage {
+	transitionInput, err := workflow.MonitoringValidationInput(claimedPercentage, params.RealProgressPercentage)
+	if err != nil {
 		return result, errs.NewBadRequest("AUDITOR_CANNOT_EXCEED_CLAIMED_PERCENTAGE")
 	}
 
-	// Calculate isAccepted based on comparison
-	// real == claimed -> accepted (true)
-	// real < claimed -> rejected (false)
-	isAccepted := params.RealProgressPercentage == claimedPercentage
+	nextState, ok := workflow.MonitoringNextValidationState(workflow.MonitoringStatePending, transitionInput)
+	if !ok {
+		return result, errs.NewBadRequest("INVALID_STATUS_TRANSITION")
+	}
+
+	isAccepted := nextState == workflow.MonitoringStateAccepted
 
 	// If rejected, comment is required
 	if !isAccepted && (params.Comment == nil || *params.Comment == "") {

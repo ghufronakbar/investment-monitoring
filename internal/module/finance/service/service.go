@@ -8,6 +8,7 @@ import (
 
 	"investment_monitoring/config"
 	"investment_monitoring/internal/repository/entity"
+	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
@@ -259,17 +260,12 @@ func (s *FinanceService) ApproveByAuditor(ctx context.Context, params ApprovalPa
 		return PaymentRequestReturn{}, errs.NewForbidden("NOT_CONTRACT_AUDITOR")
 	}
 
-	// Validate: status must be SUBMITTED
-	if prWithContract.Status != entity.PaymentRequestStatusEnumSUBMITTED {
+	newStatus, ok := workflow.FinanceNextStatus(
+		prWithContract.Status,
+		workflow.FinanceApprovalInput(params.Action, true),
+	)
+	if !ok {
 		return PaymentRequestReturn{}, errs.NewBadRequest("INVALID_STATUS_TRANSITION")
-	}
-
-	// Determine new status
-	var newStatus entity.PaymentRequestStatusEnum
-	if params.Action == "APPROVE" {
-		newStatus = entity.PaymentRequestStatusEnumAUDITORAPPROVED
-	} else {
-		newStatus = entity.PaymentRequestStatusEnumAUDITORREJECTED
 	}
 
 	// Update
@@ -303,17 +299,12 @@ func (s *FinanceService) ApproveByAgency(ctx context.Context, params ApprovalPar
 		return PaymentRequestReturn{}, errs.NewForbidden("NOT_CONTRACT_EXECUTING_AGENCY")
 	}
 
-	// Validate: status must be AUDITOR_APPROVED
-	if prWithContract.Status != entity.PaymentRequestStatusEnumAUDITORAPPROVED {
+	newStatus, ok := workflow.FinanceNextStatus(
+		prWithContract.Status,
+		workflow.FinanceApprovalInput(params.Action, false),
+	)
+	if !ok {
 		return PaymentRequestReturn{}, errs.NewBadRequest("INVALID_STATUS_TRANSITION")
-	}
-
-	// Determine new status
-	var newStatus entity.PaymentRequestStatusEnum
-	if params.Action == "APPROVE" {
-		newStatus = entity.PaymentRequestStatusEnumAGENCYAPPROVED
-	} else {
-		newStatus = entity.PaymentRequestStatusEnumAGENCYREJECTED
 	}
 
 	// Update
@@ -342,8 +333,8 @@ func (s *FinanceService) Disburse(ctx context.Context, params DisburseParams) (P
 		return PaymentRequestReturn{}, errs.NewInternalServerError(err)
 	}
 
-	// Validate: status must be AGENCY_APPROVED
-	if prWithContract.Status != entity.PaymentRequestStatusEnumAGENCYAPPROVED {
+	_, ok := workflow.FinanceNextStatus(prWithContract.Status, workflow.FinanceInputDisburse)
+	if !ok {
 		return PaymentRequestReturn{}, errs.NewBadRequest("INVALID_STATUS_TRANSITION")
 	}
 

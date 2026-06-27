@@ -61,44 +61,55 @@ Controller yang sudah direfactor:
 
 ## 2. FSM Transition Engine
 
-### Status Saat Ini
+### Status Implementasi
 
-Workflow sudah ada, tetapi logic state transition masih tersebar di service. Contoh:
+Sudah dibuat package `internal/workflow` sebagai FSM transition engine untuk workflow utama. Service Tracker, Finance, dan Monitoring sekarang memakai FSM untuk menentukan atau memvalidasi next state.
 
-- Ticket status diambil dari latest `ticket_logs`.
-- Finance status dicek manual di `ApproveByAuditor`, `ApproveByAgency`, dan `Disburse`.
-- Monitoring validation memakai status implisit: pending jika belum ada row validation.
+### Yang Sudah Dibuat
 
-### Yang Perlu Dibuat
-
-Buat package:
+Package:
 
 ```text
 internal/workflow/
   fsm.go
-  tracker_fsm.go
-  finance_fsm.go
-  monitoring_fsm.go
+  errors.go
+  finance.go
+  tracker.go
+  monitoring.go
+  finance_test.go
+  tracker_test.go
+  monitoring_test.go
 ```
 
-Contoh konsep:
+Core FSM:
 
 ```go
 type Transition struct {
-    From        string
-    Input       string
-    To          string
-    AllowedRole string
+    From  State
+    Input Input
+    To    State
 }
 
-func CanTransition(currentState, input, actorRole string) (nextState string, err error)
+func (m Machine) Next(current State, input Input) (State, bool)
 ```
 
-FSM awal yang perlu diformalisasi:
+FSM yang sudah diformalisasi:
 
 - Tracker: `OPEN -> ASSIGNED -> IN_PROGRESS -> RESOLVED -> CLOSED`
-- Finance: `SUBMITTED -> AUDITOR_APPROVED -> AGENCY_APPROVED -> PAID`
+- Finance: `SUBMITTED -> AUDITOR_APPROVED/REJECTED -> AGENCY_APPROVED/REJECTED -> PAID`
 - Monitoring: `PENDING_VALIDATION -> ACCEPTED / REJECTED`
+
+Integrasi service:
+
+- `internal/module/tracker/service`: assign, status change/comment, close ticket.
+- `internal/module/finance/service`: auditor approval, agency approval, disbursement.
+- `internal/module/monitoring/service`: progress validation accepted/rejected.
+
+Test yang sudah ada:
+
+- Finance tidak bisa skip approval stage.
+- Ticket `CLOSED` menjadi terminal state.
+- Monitoring menolak real progress yang lebih tinggi dari claimed progress.
 
 ### Manfaat
 
@@ -106,6 +117,12 @@ FSM awal yang perlu diformalisasi:
 - Invalid transition lebih mudah dicegah.
 - Bisa dibuat transition matrix untuk jurnal.
 - Testing lebih jelas karena setiap state dan input bisa diuji.
+
+### Sisa Peningkatan
+
+- Tambahkan role/actor guard langsung ke FSM jika logic makin kompleks.
+- Tambahkan audit trail setiap transition.
+- Tambahkan diagram transition ke dokumen jurnal.
 
 ---
 
@@ -703,25 +720,23 @@ Langkah:
 Jika ingin bertahap, urutan paling rasional:
 
 1. Automated Tests untuk policy layer yang sudah dibuat.
-2. FSM Transition Engine.
-3. Automated Tests untuk FSM.
-4. SLA Tracking untuk Ticket.
-5. Audit Log Global.
-6. Finance Concurrency Control.
-7. Dashboard Cache dengan Redis.
-8. Refresh Token Revocation dan Rate Limiting.
-9. OpenAPI Specification.
-10. Notification + Outbox Pattern.
-11. WBS Integrity Validation.
-12. File Metadata.
-13. Observability Metrics.
-14. Route/docs synchronization.
+2. SLA Tracking untuk Ticket.
+3. Audit Log Global.
+4. Finance Concurrency Control.
+5. Dashboard Cache dengan Redis.
+6. Refresh Token Revocation dan Rate Limiting.
+7. OpenAPI Specification.
+8. Notification + Outbox Pattern.
+9. WBS Integrity Validation.
+10. File Metadata.
+11. Observability Metrics.
+12. Route/docs synchronization.
 
 Prioritas paling tinggi untuk jurnal:
 
 1. Test role access untuk policy layer.
-2. FSM Transition Engine.
-3. SLA Tracking.
-4. Test transition dan role access.
+2. SLA Tracking.
+3. Audit trail untuk workflow transition.
+4. Diagram transition dan hasil test FSM.
 
 Empat poin tersebut paling langsung memperkuat niche Informatika yang ingin diangkat.
