@@ -84,7 +84,7 @@ func TestParseTopic(t *testing.T) {
 func TestAuthorizeUserTopic(t *testing.T) {
 	userID := uuid.New()
 	otherUserID := uuid.New()
-	svc := NewService(&config.Config{}, nil, nil)
+	svc := NewService(&config.Config{}, nil, nil, nil)
 
 	if err := svc.AuthorizeTopic(context.Background(), userID, "user."+userID.String()); err != nil {
 		t.Fatalf("AuthorizeTopic own user topic returned error: %v", err)

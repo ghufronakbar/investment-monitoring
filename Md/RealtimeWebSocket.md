@@ -207,7 +207,29 @@ type ErrorData struct {
 
 ## Batasan Saat Ini
 
-- Redis Pub/Sub fanout belum dibuat.
 - Outbox event belum dikirim ke WebSocket.
 - Tidak ada replay untuk client yang offline.
 - Presence belum dibuat.
+
+## Redis Fanout
+
+Jika Redis tersedia, server memakai Pub/Sub untuk fanout event realtime lintas API instance.
+
+Channel:
+
+```text
+{WEBSOCKET_REDIS_CHANNEL_PREFIX}:events
+```
+
+Payload yang dipublish ke Redis memakai envelope yang sama dengan payload WebSocket:
+
+```json
+{
+  "type": "ticket.created",
+  "topic": "project.{projectId}.ticket",
+  "data": {},
+  "sentAt": "2026-06-27T00:00:00Z"
+}
+```
+
+Jika Redis tidak tersedia, server tetap berjalan dan `Publish` fallback ke local hub. Fallback ini cukup untuk single API instance, tetapi tidak mengirim event lintas instance.

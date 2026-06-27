@@ -565,10 +565,20 @@ Catatan implementasi Tahap 2:
 
 Tahap 3: Redis fanout
 
-- [ ] Implement Redis publisher/subscriber.
-- [ ] Start subscriber di API.
-- [ ] Fallback saat Redis nil.
-- [ ] Test publish local dan Redis.
+- [x] Implement Redis publisher/subscriber.
+- [x] Start subscriber di API.
+- [x] Fallback saat Redis nil.
+- [x] Test publish local fallback.
+
+Catatan implementasi Tahap 3:
+
+- Redis channel yang dipakai adalah `{WEBSOCKET_REDIS_CHANNEL_PREFIX}:events`.
+- Default prefix mengikuti config `WEBSOCKET_REDIS_CHANNEL_PREFIX`, yang fallback ke `{REDIS_PREFIX}:ws`.
+- `Service.Publish(ctx, envelope)` akan publish ke Redis jika Redis tersedia.
+- API instance menjalankan Redis subscriber melalui `websocketSvc.Start(ctx)`.
+- Subscriber Redis menerima envelope JSON lalu deliver ke local hub berdasarkan `topic`.
+- Jika Redis tidak tersedia, `Publish` fallback ke local hub sehingga single instance tetap dapat mengirim event ke client yang terkoneksi.
+- Integration test Redis live belum dibuat karena test suite saat ini tidak menyediakan Redis test container.
 
 Tahap 4: Outbox delivery
 

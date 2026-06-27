@@ -13,6 +13,7 @@ import (
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 
+	"github.com/redis/go-redis/v9"
 	"nhooyr.io/websocket"
 )
 
@@ -22,15 +23,18 @@ type Service struct {
 	store      entity.Store
 	policy     *policy.Service
 	hub        *Hub
+	pubsub     *redisPubSub
 }
 
-func NewService(cfg *config.Config, tokenMaker *token_service.TokenMaker, store entity.Store) *Service {
+func NewService(cfg *config.Config, tokenMaker *token_service.TokenMaker, store entity.Store, rdb *redis.Client) *Service {
+	channel := cfg.WEBSOCKET_REDIS_CHANNEL_PREFIX + ":events"
 	return &Service{
 		cfg:        cfg,
 		tokenMaker: tokenMaker,
 		store:      store,
 		policy:     newTopicPolicy(store),
 		hub:        NewHub(),
+		pubsub:     newRedisPubSub(rdb, channel),
 	}
 }
 
@@ -90,7 +94,18 @@ func (s *Service) HandleConnection(ctx context.Context, conn *websocket.Conn, cl
 	<-writeDone
 }
 
+func (s *Service) Start(ctx context.Context) error {
+	if !s.Enabled() || s.pubsub == nil {
+		return nil
+	}
+	s.pubsub.start(ctx, s.hub.Publish)
+	return nil
+}
+
 func (s *Service) Shutdown(_ context.Context) error {
+	if s.pubsub != nil {
+		s.pubsub.shutdown()
+	}
 	s.hub.Shutdown()
 	return nil
 }

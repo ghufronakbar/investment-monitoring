@@ -30,7 +30,7 @@ func TestWebSocketConnectAndPing(t *testing.T) {
 		WEBSOCKET_CLIENT_SEND_BUFFER: 4,
 	}
 	tokenSvc := token_service.NewService(cfg)
-	wsSvc := websocket_service.NewService(cfg, tokenSvc, nil)
+	wsSvc := websocket_service.NewService(cfg, tokenSvc, nil, nil)
 	handler := NewHandler(wsSvc)
 
 	server := httptest.NewServer(handler.Routes())

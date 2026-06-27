@@ -62,6 +62,11 @@ func main() {
 	r.Use(chiMw.Recoverer)
 
 	apiRouter, websocketSvc := handler.NewRouter(store, rdb, cfg)
+	websocketCtx, websocketCancel := context.WithCancel(context.Background())
+	defer websocketCancel()
+	if err := websocketSvc.Start(websocketCtx); err != nil {
+		log.Println("WebSocket service failed to start:", err)
+	}
 	r.Mount("/api", apiRouter)
 
 	srv := &http.Server{
@@ -91,5 +96,6 @@ func main() {
 	defer cancel()
 
 	_ = srv.Shutdown(ctx)
+	websocketCancel()
 	_ = websocketSvc.Shutdown(ctx)
 }
