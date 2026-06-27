@@ -595,28 +595,31 @@ Rekomendasi:
 
 Alasan:
 
-Project mengklaim monitoring real-time. Untuk membuatnya benar-benar kuat, perlu event-driven architecture meskipun tetap modular monolith.
+Project mengklaim monitoring real-time. Baseline event-driven architecture sudah mulai dibuat melalui PostgreSQL outbox, meskipun delivery real-time seperti WebSocket/SSE belum tersedia.
 
 Rekomendasi:
 
 1. Domain Events
 
-   Buat event internal:
+   Event internal awal sudah dibuat:
 
    - `ProgressSubmitted`
    - `ProgressValidated`
+   - `TicketCreated`
    - `TicketAssigned`
    - `TicketResolved`
+   - `TicketClosed`
    - `PaymentApproved`
    - `PaymentPaid`
+   - `MemberInvited`
 
 2. Outbox Pattern
 
-   Simpan event di table `outbox_events` dalam transaksi yang sama dengan perubahan data.
+   Event sudah disimpan di table `outbox_events` dalam transaksi yang sama dengan perubahan data.
 
 3. Worker
 
-   Worker membaca outbox dan mengirim:
+   Worker awal sudah tersedia di `cmd/worker/main.go`. Saat ini worker baru membaca outbox dan mark processed sebagai fondasi. Tahap berikutnya adalah handler untuk:
 
    - email;
    - notification;
@@ -625,7 +628,7 @@ Rekomendasi:
 
 4. Redis atau PostgreSQL Queue
 
-   Untuk tahap awal, PostgreSQL outbox cukup. Redis bisa dipakai untuk queue/cache jika ingin menunjukkan peningkatan teknologi.
+   Untuk tahap awal, PostgreSQL outbox sudah cukup. Redis tetap bisa dipakai untuk cache/rate limit dan nanti bisa ditambah pub-sub jika perlu push update.
 
 ---
 
@@ -755,7 +758,7 @@ Jika waktu pengembangan terbatas, urutan paling efektif:
 7. Tambahkan dashboard cache atau queue berbasis Redis.
 8. Tambahkan OpenAPI spec.
 9. Tambahkan dashboard risk indicator.
-10. Tambahkan outbox pattern dan notification worker.
+10. Lengkapi handler notification untuk outbox worker.
 
 Jika ingin cepat menaikkan kualitas jurnal, tiga improvement paling bernilai adalah:
 
@@ -871,7 +874,7 @@ Struktur tulisan yang disarankan:
 - Ticket log berperan sebagai event history yang memungkinkan status hambatan ditelusuri dari waktu ke waktu.
 - Approval bertingkat pada finance module merepresentasikan separation of duties antara auditor, executing agency, dan loan provider.
 - Dashboard berfungsi sebagai decision support layer yang menggabungkan progress fisik, serapan finansial, dan status hambatan.
-- Untuk mencapai real-time monitoring, sistem dapat berevolusi dari REST API menuju event-driven notification menggunakan outbox pattern dan Redis/WebSocket/SSE.
+- Untuk mencapai real-time monitoring, sistem sudah memiliki fondasi outbox event dan dapat dilanjutkan ke notification worker, Redis pub/sub, WebSocket, atau SSE.
 
 ---
 

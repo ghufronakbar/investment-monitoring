@@ -8,6 +8,7 @@ import (
 	"investment_monitoring/config"
 	"investment_monitoring/internal/audit"
 	mail_service "investment_monitoring/internal/module/support/mail/service"
+	"investment_monitoring/internal/outbox"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 
@@ -17,6 +18,7 @@ import (
 type OrganizationService struct {
 	store   *entity.SQLStore
 	audit   *audit.Service
+	outbox  *outbox.Service
 	mailSvc *mail_service.MailService
 	cfg     *config.Config
 }
@@ -25,6 +27,7 @@ func NewService(store *entity.SQLStore, mailSvc *mail_service.MailService, cfg *
 	return &OrganizationService{
 		store:   store,
 		audit:   audit.NewService(store),
+		outbox:  outbox.NewService(store),
 		mailSvc: mailSvc,
 		cfg:     cfg,
 	}
@@ -194,7 +197,7 @@ func (s *OrganizationService) InviteMember(ctx context.Context, params InviteMem
 				},
 			}
 
-			return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 				ActorUserID: params.UserID,
 				ActorOrgID:  params.ActorOrgID,
 				Action:      audit.ActionInviteOrganizationUser,
@@ -207,6 +210,23 @@ func (s *OrganizationService) InviteMember(ctx context.Context, params InviteMem
 					"email":          user.Email,
 					"memberRole":     membership.Role,
 					"isNewUser":      true,
+				},
+			}); err != nil {
+				return err
+			}
+
+			return s.outbox.PublishTx(ctx, q, outbox.Event{
+				EventType:     outbox.EventMemberInvited,
+				AggregateType: outbox.AggregateUser,
+				AggregateID:   user.ID,
+				Payload: map[string]any{
+					"organizationId":   params.OrganizationID,
+					"organizationName": org.Name,
+					"userId":           user.ID,
+					"email":            user.Email,
+					"name":             user.Name,
+					"memberRole":       membership.Role,
+					"isNewUser":        true,
 				},
 			})
 		})
@@ -240,7 +260,7 @@ func (s *OrganizationService) InviteMember(ctx context.Context, params InviteMem
 				return txErr
 			}
 
-			return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 				ActorUserID: params.UserID,
 				ActorOrgID:  params.ActorOrgID,
 				Action:      audit.ActionInviteOrganizationUser,
@@ -253,6 +273,23 @@ func (s *OrganizationService) InviteMember(ctx context.Context, params InviteMem
 					"email":          existingUser.Email,
 					"memberRole":     membership.Role,
 					"isNewUser":      false,
+				},
+			}); err != nil {
+				return err
+			}
+
+			return s.outbox.PublishTx(ctx, q, outbox.Event{
+				EventType:     outbox.EventMemberInvited,
+				AggregateType: outbox.AggregateUser,
+				AggregateID:   userID,
+				Payload: map[string]any{
+					"organizationId":   params.OrganizationID,
+					"organizationName": org.Name,
+					"userId":           userID,
+					"email":            existingUser.Email,
+					"name":             existingUser.Name,
+					"memberRole":       membership.Role,
+					"isNewUser":        false,
 				},
 			})
 		})

@@ -9,6 +9,7 @@ import (
 	"investment_monitoring/config"
 	"investment_monitoring/internal/audit"
 	dashboard_cache "investment_monitoring/internal/module/support/dashboard/cache"
+	"investment_monitoring/internal/outbox"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
@@ -19,18 +20,20 @@ import (
 )
 
 type MonitoringService struct {
-	store *entity.SQLStore
-	audit *audit.Service
-	cache *dashboard_cache.Cache
-	cfg   *config.Config
+	store  *entity.SQLStore
+	audit  *audit.Service
+	cache  *dashboard_cache.Cache
+	outbox *outbox.Service
+	cfg    *config.Config
 }
 
 func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *MonitoringService {
 	return &MonitoringService{
-		store: store,
-		audit: audit.NewService(store),
-		cache: dashboard_cache.New(rdb, cfg),
-		cfg:   cfg,
+		store:  store,
+		audit:  audit.NewService(store),
+		cache:  dashboard_cache.New(rdb, cfg),
+		outbox: outbox.NewService(store),
+		cfg:    cfg,
 	}
 }
 
@@ -413,13 +416,28 @@ func (s *MonitoringService) SubmitProgress(ctx context.Context, params SubmitPro
 			return txErr
 		}
 
-		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+		if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 			ActorUserID: params.UserID,
 			ActorOrgID:  params.VendorID,
 			Action:      audit.ActionSubmitProgress,
 			EntityType:  audit.EntityProgressLog,
 			EntityID:    log.ID,
 			AfterData: map[string]any{
+				"progressLogId":      log.ID,
+				"taskItemId":         params.TaskID,
+				"taskTitle":          task.Title,
+				"progressPercentage": params.ProgressPercentage,
+				"vendorId":           params.VendorID,
+			},
+		}); err != nil {
+			return err
+		}
+
+		return s.outbox.PublishTx(ctx, q, outbox.Event{
+			EventType:     outbox.EventProgressSubmitted,
+			AggregateType: outbox.AggregateProgressLog,
+			AggregateID:   log.ID,
+			Payload: map[string]any{
 				"progressLogId":      log.ID,
 				"taskItemId":         params.TaskID,
 				"taskTitle":          task.Title,
@@ -607,7 +625,7 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 			return txErr
 		}
 
-		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+		if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 			ActorUserID: params.UserID,
 			ActorOrgID:  params.AuditorID,
 			Action:      audit.ActionValidateProgress,
@@ -621,6 +639,23 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 			},
 			AfterData: map[string]any{
 				"validationId":           validation.ID,
+				"isAccepted":             validation.IsAccepted,
+				"claimedPercentage":      claimedPercentage,
+				"realProgressPercentage": validation.RealProgressPercentage,
+				"validationState":        nextState,
+				"auditorId":              params.AuditorID,
+			},
+		}); err != nil {
+			return err
+		}
+
+		return s.outbox.PublishTx(ctx, q, outbox.Event{
+			EventType:     outbox.EventProgressValidated,
+			AggregateType: outbox.AggregateProgressLog,
+			AggregateID:   log.ID,
+			Payload: map[string]any{
+				"validationId":           validation.ID,
+				"progressLogId":          log.ID,
 				"isAccepted":             validation.IsAccepted,
 				"claimedPercentage":      claimedPercentage,
 				"realProgressPercentage": validation.RealProgressPercentage,

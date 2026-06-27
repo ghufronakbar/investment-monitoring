@@ -11,6 +11,7 @@ import (
 	"investment_monitoring/internal/audit"
 	dashboard_cache "investment_monitoring/internal/module/support/dashboard/cache"
 	sla_service "investment_monitoring/internal/module/support/sla/service"
+	"investment_monitoring/internal/outbox"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
@@ -20,20 +21,22 @@ import (
 )
 
 type TrackerService struct {
-	store *entity.SQLStore
-	audit *audit.Service
-	cache *dashboard_cache.Cache
-	sla   *sla_service.Service
-	cfg   *config.Config
+	store  *entity.SQLStore
+	audit  *audit.Service
+	cache  *dashboard_cache.Cache
+	outbox *outbox.Service
+	sla    *sla_service.Service
+	cfg    *config.Config
 }
 
 func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *TrackerService {
 	return &TrackerService{
-		store: store,
-		audit: audit.NewService(store),
-		cache: dashboard_cache.New(rdb, cfg),
-		sla:   sla_service.NewService(store),
-		cfg:   cfg,
+		store:  store,
+		audit:  audit.NewService(store),
+		cache:  dashboard_cache.New(rdb, cfg),
+		outbox: outbox.NewService(store),
+		sla:    sla_service.NewService(store),
+		cfg:    cfg,
 	}
 }
 
@@ -116,7 +119,7 @@ func (s *TrackerService) CreateTicket(ctx context.Context, params CreateTicketPa
 			return txErr
 		}
 
-		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+		if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 			ActorUserID: params.UserID,
 			ActorOrgID:  params.ContractorID,
 			Action:      audit.ActionCreateTicket,
@@ -128,6 +131,22 @@ func (s *TrackerService) CreateTicket(ctx context.Context, params CreateTicketPa
 				"contractId": ticket.ContractID,
 				"status":     entity.TicketStatusEnumOPEN,
 				"slaDueAt":   enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			},
+		}); err != nil {
+			return err
+		}
+
+		return s.outbox.PublishTx(ctx, q, outbox.Event{
+			EventType:     outbox.EventTicketCreated,
+			AggregateType: outbox.AggregateTicket,
+			AggregateID:   ticket.ID,
+			Payload: map[string]any{
+				"ticketId":     ticket.ID,
+				"title":        ticket.Title,
+				"contractId":   ticket.ContractID,
+				"projectId":    contract.ProjectID,
+				"contractorId": params.ContractorID,
+				"status":       entity.TicketStatusEnumOPEN,
 			},
 		})
 	})
@@ -439,7 +458,7 @@ func (s *TrackerService) AssignTicket(ctx context.Context, params AssignTicketPa
 			return txErr
 		}
 
-		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+		if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 			ActorUserID: params.UserID,
 			ActorOrgID:  params.OrgID,
 			Action:      audit.ActionAssignTicket,
@@ -453,6 +472,21 @@ func (s *TrackerService) AssignTicket(ctx context.Context, params AssignTicketPa
 				"assignedOrgId": params.AssignToOrgID,
 				"assignedName":  assignee.Name,
 				"slaDueAt":      enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			},
+		}); err != nil {
+			return err
+		}
+
+		return s.outbox.PublishTx(ctx, q, outbox.Event{
+			EventType:     outbox.EventTicketAssigned,
+			AggregateType: outbox.AggregateTicket,
+			AggregateID:   params.TicketID,
+			Payload: map[string]any{
+				"ticketId":      params.TicketID,
+				"contractId":    ticket.ContractID,
+				"assignedOrgId": params.AssignToOrgID,
+				"assignedName":  assignee.Name,
+				"status":        nextStatus,
 			},
 		})
 	})
@@ -538,7 +572,7 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 				return txErr
 			}
 
-			return s.audit.RecordTx(ctx, q, audit.RecordParams{
+			if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 				ActorUserID: params.UserID,
 				ActorOrgID:  params.OrgID,
 				Action:      audit.ActionUpdateTicketStatus,
@@ -551,6 +585,21 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 					"ticketLogId": log.ID,
 					"status":      newStatus,
 					"description": params.Description,
+				},
+			}); err != nil {
+				return err
+			}
+
+			return s.outbox.PublishTx(ctx, q, outbox.Event{
+				EventType:     outbox.EventTicketClosed,
+				AggregateType: outbox.AggregateTicket,
+				AggregateID:   params.TicketID,
+				Payload: map[string]any{
+					"ticketId":    params.TicketID,
+					"ticketLogId": log.ID,
+					"status":      newStatus,
+					"actorOrgId":  params.OrgID,
+					"actorUserId": params.UserID,
 				},
 			})
 		}
@@ -569,7 +618,7 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 			return txErr
 		}
 
-		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+		if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 			ActorUserID: params.UserID,
 			ActorOrgID:  params.OrgID,
 			Action:      audit.ActionUpdateTicketStatus,
@@ -583,6 +632,25 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 				"status":      newStatus,
 				"description": params.Description,
 				"slaDueAt":    enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			},
+		}); err != nil {
+			return err
+		}
+
+		if newStatus != entity.TicketStatusEnumRESOLVED {
+			return nil
+		}
+
+		return s.outbox.PublishTx(ctx, q, outbox.Event{
+			EventType:     outbox.EventTicketResolved,
+			AggregateType: outbox.AggregateTicket,
+			AggregateID:   params.TicketID,
+			Payload: map[string]any{
+				"ticketId":    params.TicketID,
+				"ticketLogId": log.ID,
+				"status":      newStatus,
+				"actorOrgId":  params.OrgID,
+				"actorUserId": params.UserID,
 			},
 		})
 	})
@@ -659,7 +727,7 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 			return txErr
 		}
 
-		return s.audit.RecordTx(ctx, q, audit.RecordParams{
+		if err := s.audit.RecordTx(ctx, q, audit.RecordParams{
 			ActorUserID: params.UserID,
 			ActorOrgID:  params.OrgID,
 			Action:      audit.ActionCloseTicket,
@@ -670,6 +738,20 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 			},
 			AfterData: map[string]any{
 				"status": nextStatus,
+			},
+		}); err != nil {
+			return err
+		}
+
+		return s.outbox.PublishTx(ctx, q, outbox.Event{
+			EventType:     outbox.EventTicketClosed,
+			AggregateType: outbox.AggregateTicket,
+			AggregateID:   params.TicketID,
+			Payload: map[string]any{
+				"ticketId":    params.TicketID,
+				"status":      nextStatus,
+				"actorOrgId":  params.OrgID,
+				"actorUserId": params.UserID,
 			},
 		})
 	})

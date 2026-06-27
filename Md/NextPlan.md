@@ -552,13 +552,19 @@ Invalidasi cache sudah dipasang pada:
 
 ## 9. Domain Event dan Outbox Pattern
 
-### Status Saat Ini
+### Status Implementasi
 
-Beberapa action penting terjadi, tetapi belum menghasilkan event formal. Email invitation saat ini dikirim via goroutine langsung setelah transaksi, belum memakai queue/outbox.
+Sudah dibuat baseline domain event dan outbox pattern. Event penting sekarang disimpan ke `outbox_events` dalam transaksi yang sama dengan perubahan data bisnis, sehingga event tidak tercatat jika transaksi utama gagal.
 
-### Yang Perlu Dibuat
+### Yang Sudah Dibuat
 
 Migration:
+
+```text
+migrations/20260627094500_add_outbox_events.sql
+```
+
+Table:
 
 ```text
 outbox_events
@@ -572,22 +578,64 @@ outbox_events
 - processed_at
 ```
 
-Event awal:
+Package:
+
+```text
+internal/outbox/
+  types.go
+  service.go
+  processor.go
+```
+
+Worker awal:
+
+```text
+cmd/worker/main.go
+```
+
+Query sqlc:
+
+```text
+internal/repository/queries/outbox.sql
+- CreateOutboxEvent
+- ListPendingOutboxEvents
+- MarkOutboxEventProcessing
+- MarkOutboxEventProcessed
+- MarkOutboxEventFailed
+```
+
+Event yang sudah dipublish:
 
 - `ProgressSubmitted`
 - `ProgressValidated`
 - `TicketCreated`
 - `TicketAssigned`
 - `TicketResolved`
+- `TicketClosed`
 - `PaymentApproved`
 - `PaymentPaid`
 - `MemberInvited`
 
-Worker:
+Integrasi transaksi:
 
 ```text
-cmd/worker/main.go
-internal/outbox/
+Monitoring:
+- submit progress
+- validate progress
+
+Tracker:
+- create ticket
+- assign ticket
+- resolve ticket
+- close ticket
+
+Finance:
+- auditor approval
+- executing agency approval
+- loan provider disbursement
+
+IAM Organization:
+- invite member
 ```
 
 ### Manfaat
@@ -595,6 +643,13 @@ internal/outbox/
 - Fondasi notification system.
 - Lebih reliable dibanding goroutine langsung.
 - Membuka jalan untuk real-time update, email, dan alert SLA.
+
+### Sisa Peningkatan
+
+- Worker saat ini baru melakukan polling dan mark processed sebagai fondasi. Handler nyata untuk email, notification, dan websocket/SSE belum dibuat.
+- Tambahkan retry count, error message, dan dead-letter handling.
+- Tambahkan event handler untuk mengganti pengiriman email invitation via goroutine langsung.
+- Gunakan outbox event untuk invalidasi dashboard cache agar invalidasi tidak tersebar di banyak service.
 
 ---
 

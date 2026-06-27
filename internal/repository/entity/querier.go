@@ -42,6 +42,9 @@ type Querier interface {
 	// ===== ORGANIZATION MEMBER QUERIES =====
 	// Link user to organization with specific role
 	CreateOrganizationMember(ctx context.Context, arg CreateOrganizationMemberParams) (OrganizationMember, error)
+	// internal/repository/queries/outbox.sql
+	// SQLC queries for transactional domain events / outbox pattern
+	CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventParams) (OutboxEvent, error)
 	// internal/repository/queries/finance.sql
 	// SQLC queries for FINANCE module (Disbursement/Payment Requests)
 	// Tiered Approval Flow: SUBMITTED -> AUDITOR -> AGENCY -> PAID
@@ -166,9 +169,13 @@ type Querier interface {
 	ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsByEntityParams) ([]AuditLog, error)
 	// List all organizations with pagination
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
+	ListPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)
 	ListProjects(ctx context.Context) ([]Project, error)
 	// Get all projects where user's organization is a participant (including GOV_PARTNER)
 	ListUserAccessibleProjects(ctx context.Context, userID uuid.UUID) ([]Project, error)
+	MarkOutboxEventFailed(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
+	MarkOutboxEventProcessed(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
+	MarkOutboxEventProcessing(ctx context.Context, id uuid.UUID) (OutboxEvent, error)
 	ResolveSLARecord(ctx context.Context, arg ResolveSLARecordParams) (SlaRecord, error)
 	// Set password for user (used when user activates account)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) (User, error)

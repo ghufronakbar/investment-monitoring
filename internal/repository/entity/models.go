@@ -309,6 +309,17 @@ type OrganizationMember struct {
 	DeletedAt      sql.NullTime   `json:"deleted_at"`
 }
 
+type OutboxEvent struct {
+	ID            uuid.UUID       `json:"id"`
+	EventType     string          `json:"event_type"`
+	AggregateType string          `json:"aggregate_type"`
+	AggregateID   uuid.UUID       `json:"aggregate_id"`
+	Payload       json.RawMessage `json:"payload"`
+	Status        string          `json:"status"`
+	CreatedAt     time.Time       `json:"created_at"`
+	ProcessedAt   sql.NullTime    `json:"processed_at"`
+}
+
 type PaymentRequest struct {
 	ID                    uuid.UUID                `json:"id"`
 	Title                 string                   `json:"title"`

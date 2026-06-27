@@ -130,19 +130,17 @@ Jangan membuat klaim bahwa integrasi tersebut sudah berjalan.
 
 ### 2.4 Real-time perlu istilah yang hati-hati
 
-Backend saat ini belum real-time secara teknis karena belum ada WebSocket, SSE, message queue, atau push notification. Dashboard masih request-response API.
+Backend saat ini belum real-time secara delivery karena belum ada WebSocket, SSE, atau push notification. Namun fondasi event-driven sudah mulai ada melalui outbox event di database.
 
 Gunakan istilah:
 
 - near-real-time;
 - real-time readiness;
-- event-driven roadmap;
+- event-driven readiness;
 - dashboard monitoring periodik.
 
-Kalau ingin benar-benar mengklaim real-time, perlu menambahkan:
+Kalau ingin benar-benar mengklaim real-time, perlu melanjutkan baseline outbox dengan:
 
-- domain events;
-- outbox pattern;
 - notification worker;
 - WebSocket atau SSE;
 - Redis/pub-sub atau message queue.
