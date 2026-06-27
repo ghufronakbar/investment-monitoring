@@ -79,7 +79,7 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	financeSvc := finance_service.NewService(db, rdb, cfg)
 
 	// Uploader service
-	uploaderSvc, _ := uploader_service.NewService(cfg)
+	uploaderSvc, _ := uploader_service.NewService(db, cfg)
 
 	// Dashboard service
 	dashboardSvc := dashboard_service.NewService(db, rdb, cfg)

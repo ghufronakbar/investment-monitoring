@@ -234,12 +234,14 @@ Support module berisi:
 
 Nilai IT:
 
-- Upload dipisahkan dari module bisnis. Module bisnis menyimpan URL hasil upload.
+- Upload dipisahkan dari module bisnis. Module bisnis masih bisa menyimpan URL hasil upload, sementara metadata teknis file disimpan terpusat di tabel `files`.
+- Metadata upload menyimpan `public_id`, URL, nama file, MIME hasil sniffing, ukuran, checksum, user uploader, organization opsional, dan entity binding opsional.
 - Dashboard aggregation dipisahkan agar query/kalkulasi analytics tidak mencemari transactional module.
 
 Catatan improvement:
 
-- File upload perlu virus scanning, checksum, content sniffing, dan metadata table.
+- File upload sudah memiliki metadata table, SHA-256 checksum, dan content sniffing untuk mencegah MIME spoofing berbasis header.
+- Virus scanning belum dibuat dan masih menjadi improvement lanjutan.
 - Cloudinary public URL sebaiknya disertai access policy jika dokumen kontrak/invoice sensitif.
 - Dashboard bisa memakai cache dan pre-computation jika data membesar.
 

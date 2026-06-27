@@ -845,11 +845,21 @@ Catatan desain:
 
 ## 14. File Metadata dan Secure Upload
 
-### Status Saat Ini
+### Status Implementasi
 
-Upload file langsung ke Cloudinary dan module bisnis menyimpan URL. Belum ada metadata file di database.
+Upload file sekarang tetap dikirim ke Cloudinary, tetapi backend juga menyimpan metadata file ke database melalui tabel `files`. Validasi MIME tidak lagi bergantung pada header multipart, melainkan memakai content sniffing dari byte file asli.
 
-### Yang Perlu Dibuat
+Migration:
+
+```text
+migrations/20260627100000_add_file_metadata.sql
+```
+
+Query:
+
+```text
+internal/repository/queries/file.sql
+```
 
 Table:
 
@@ -867,19 +877,59 @@ files
 - entity_type
 - entity_id
 - created_at
+- updated_at
+- deleted_at
 ```
 
-Tambahkan validasi:
+Endpoint yang terdampak:
+
+```text
+POST /support/upload/single
+POST /support/upload/multiple
+```
+
+Form field wajib:
+
+```text
+file   // single upload
+files  // multiple upload
+```
+
+Form field opsional:
+
+```text
+organizationId
+entityType
+entityId
+```
+
+Catatan:
+
+- `organizationId` hanya diterima jika user adalah member organization tersebut.
+- `entityType` dan `entityId` harus dikirim bersama; tidak boleh hanya salah satu.
+- Upload tanpa `entityType/entityId` tetap valid karena frontend biasanya upload file sebelum entity bisnis dibuat.
+
+Validasi yang sudah diterapkan:
 
 - MIME sniffing dari content, bukan hanya header.
-- checksum untuk integritas.
-- optional virus scanning.
+- whitelist `image/jpeg`, `image/png`, dan `application/pdf`.
+- size maksimum 5 MB per file.
+- file kosong ditolak.
+- checksum SHA-256 disimpan untuk integritas.
+- nama file dibersihkan dengan `filepath.Base`.
+- metadata upload disimpan dengan actor `uploaded_by_user_id`.
+
+Belum dibuat:
+
+- virus scanning.
+- private/signed delivery policy untuk dokumen sensitif.
 
 ### Manfaat
 
 - Dokumen kontrak/invoice lebih traceable.
 - Upload bisa diaudit.
 - Mengurangi risiko file spoofing.
+- Membuat pembahasan jurnal lebih kuat karena upload tidak hanya menjadi utility stateless, tetapi punya metadata, integrity checksum, dan actor traceability.
 
 ---
 

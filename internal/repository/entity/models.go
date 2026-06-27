@@ -280,6 +280,23 @@ type Example struct {
 	DeletedAt sql.NullTime `json:"deleted_at"`
 }
 
+type File struct {
+	ID               uuid.UUID      `json:"id"`
+	PublicID         string         `json:"public_id"`
+	Url              string         `json:"url"`
+	FileName         string         `json:"file_name"`
+	MimeType         string         `json:"mime_type"`
+	Size             int64          `json:"size"`
+	Checksum         string         `json:"checksum"`
+	UploadedByUserID uuid.UUID      `json:"uploaded_by_user_id"`
+	UploadedByOrgID  uuid.NullUUID  `json:"uploaded_by_org_id"`
+	EntityType       sql.NullString `json:"entity_type"`
+	EntityID         uuid.NullUUID  `json:"entity_id"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	DeletedAt        sql.NullTime   `json:"deleted_at"`
+}
+
 type GovParticipant struct {
 	ID               uuid.UUID    `json:"id"`
 	ContractID       uuid.UUID    `json:"contract_id"`

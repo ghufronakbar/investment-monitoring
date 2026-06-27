@@ -36,6 +36,9 @@ type Querier interface {
 	// ===== CONTRACT QUERIES =====
 	CreateContract(ctx context.Context, arg CreateContractParams) (Contract, error)
 	CreateExample(ctx context.Context, arg CreateExampleParams) (Example, error)
+	// internal/repository/queries/file.sql
+	// SQLC queries for uploaded file metadata
+	CreateFileMetadata(ctx context.Context, arg CreateFileMetadataParams) (File, error)
 	// ===== ORGANIZATION QUERIES =====
 	// Create new organization
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
@@ -92,6 +95,7 @@ type Querier interface {
 	// ===== STATS DATA =====
 	GetDisbursedAmountByProjectID(ctx context.Context, projectID uuid.UUID) (int64, error)
 	GetExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
+	GetFileByID(ctx context.Context, id uuid.UUID) (File, error)
 	GetGovParticipantsByContractID(ctx context.Context, contractID uuid.UUID) ([]GetGovParticipantsByContractIDRow, error)
 	GetLatestTicketStatus(ctx context.Context, ticketID uuid.UUID) (TicketStatusEnum, error)
 	// Leaf tasks are tasks that don't have any children
@@ -167,6 +171,8 @@ type Querier interface {
 	HasPendingPaymentRequest(ctx context.Context, contractID uuid.UUID) (bool, error)
 	ListAuditLogsByActor(ctx context.Context, arg ListAuditLogsByActorParams) ([]AuditLog, error)
 	ListAuditLogsByEntity(ctx context.Context, arg ListAuditLogsByEntityParams) ([]AuditLog, error)
+	ListFilesByEntity(ctx context.Context, arg ListFilesByEntityParams) ([]File, error)
+	ListFilesByUploader(ctx context.Context, arg ListFilesByUploaderParams) ([]File, error)
 	// List all organizations with pagination
 	ListOrganizations(ctx context.Context, arg ListOrganizationsParams) ([]Organization, error)
 	ListPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error)

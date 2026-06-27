@@ -24,6 +24,9 @@ Fungsi pendukung visualisasi data (Dashboard) dan manajemen file (Utility). Modu
 
 ```
 Form Field: file
+Optional Form Field: organizationId
+Optional Form Field: entityType
+Optional Form Field: entityId
 ```
 
 **Allowed MIME Types:**
@@ -40,9 +43,19 @@ Form Field: file
 
 ```json
 {
+  "id": "uuid",
   "publicId": "jica-investment_abc123",
   "url": "https://res.cloudinary.com/xxx/image/upload/v1234/jica-investment_abc123.jpg",
-  "format": "jpg"
+  "format": "jpg",
+  "fileName": "evidence.jpg",
+  "mimeType": "image/jpeg",
+  "size": 123456,
+  "checksum": "sha256-hex",
+  "uploadedByUserId": "uuid",
+  "uploadedByOrgId": "uuid",
+  "entityType": "PROGRESS_LOG",
+  "entityId": "uuid",
+  "createdAt": "2026-06-27T00:00:00Z"
 }
 ```
 
@@ -51,10 +64,13 @@ Form Field: file
 1. Parse multipart form
 2. Validasi file exists
 3. Validasi file size <= 5MB
-4. Validasi MIME type (JPG, PNG, PDF only)
-5. Determine resource type (image atau pdf)
-6. Upload ke Cloudinary
-7. Return public URL
+4. Baca file dengan limit
+5. Sniff MIME type dari content file, bukan dari header multipart
+6. Hitung checksum SHA-256
+7. Determine resource type (image atau pdf)
+8. Upload ke Cloudinary
+9. Simpan metadata ke tabel `files`
+10. Return public URL dan metadata
 
 **Error Codes:**
 
@@ -62,6 +78,9 @@ Form Field: file
 - `FILE_TOO_LARGE` - File > 5MB
 - `FILE_TOO_LARGE_5MB_MAX` - File > 5MB (after size check)
 - `INVALID_FILE_TYPE` - MIME type tidak diperbolehkan
+- `FILE_EMPTY` - File kosong
+- `ENTITY_TYPE_AND_ENTITY_ID_REQUIRED_TOGETHER` - Entity binding tidak lengkap
+- `USER_NOT_MEMBER_OF_ORGANIZATION` - User bukan member organization yang dikirim
 
 **Success Code:** `SUCCESS_UPLOAD`
 
