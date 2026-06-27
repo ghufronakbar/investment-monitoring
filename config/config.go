@@ -4,6 +4,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -57,6 +58,17 @@ type Config struct {
 	CLOUDINARY_CLOUD_NAME string
 	CLOUDINARY_API_KEY    string
 	CLOUDINARY_API_SECRET string
+
+	// WEBSOCKET
+	WEBSOCKET_ENABLED              bool
+	WEBSOCKET_ALLOWED_ORIGINS      []string
+	WEBSOCKET_READ_LIMIT_BYTES     int64
+	WEBSOCKET_WRITE_TIMEOUT        time.Duration
+	WEBSOCKET_IDLE_TIMEOUT         time.Duration
+	WEBSOCKET_PING_INTERVAL        time.Duration
+	WEBSOCKET_CLIENT_SEND_BUFFER   int
+	WEBSOCKET_REDIS_CHANNEL_PREFIX string
+	WEBSOCKET_PRESENCE_TTL         time.Duration
 }
 
 func Load() *Config {
@@ -78,6 +90,11 @@ func Load() *Config {
 	jwtAccessTokenExpiredDuration := time.Duration(jwtAccessTokenExpired) * time.Minute
 	jwtRefreshTokenExpiredDuration := time.Duration(jwtRefreshTokenExpired) * time.Hour * 24
 	jwtRefreshTokenRenewalDuration := time.Duration(jwtRefreshTokenRenewal) * time.Hour * 24
+
+	websocketWriteTimeout := getEnvOptionalInt("WEBSOCKET_WRITE_TIMEOUT_SECONDS", 10)
+	websocketIdleTimeout := getEnvOptionalInt("WEBSOCKET_IDLE_TIMEOUT_SECONDS", 60)
+	websocketPingInterval := getEnvOptionalInt("WEBSOCKET_PING_INTERVAL_SECONDS", 25)
+	websocketPresenceTTL := getEnvOptionalInt("WEBSOCKET_PRESENCE_TTL_SECONDS", 90)
 
 	return &Config{
 		// COMMON
@@ -125,6 +142,17 @@ func Load() *Config {
 		CLOUDINARY_CLOUD_NAME: getEnv("CLOUDINARY_CLOUD_NAME"),
 		CLOUDINARY_API_KEY:    getEnv("CLOUDINARY_API_KEY"),
 		CLOUDINARY_API_SECRET: getEnv("CLOUDINARY_API_SECRET"),
+
+		// WEBSOCKET
+		WEBSOCKET_ENABLED:              getEnvOptionalBool("WEBSOCKET_ENABLED", true),
+		WEBSOCKET_ALLOWED_ORIGINS:      getEnvOptionalList("WEBSOCKET_ALLOWED_ORIGINS", []string{"*"}),
+		WEBSOCKET_READ_LIMIT_BYTES:     int64(getEnvOptionalInt("WEBSOCKET_READ_LIMIT_BYTES", 65536)),
+		WEBSOCKET_WRITE_TIMEOUT:        time.Duration(websocketWriteTimeout) * time.Second,
+		WEBSOCKET_IDLE_TIMEOUT:         time.Duration(websocketIdleTimeout) * time.Second,
+		WEBSOCKET_PING_INTERVAL:        time.Duration(websocketPingInterval) * time.Second,
+		WEBSOCKET_CLIENT_SEND_BUFFER:   getEnvOptionalInt("WEBSOCKET_CLIENT_SEND_BUFFER", 64),
+		WEBSOCKET_REDIS_CHANNEL_PREFIX: getEnvOptional("WEBSOCKET_REDIS_CHANNEL_PREFIX", getEnvOptional("REDIS_PREFIX", "invmonitor")+":ws"),
+		WEBSOCKET_PRESENCE_TTL:         time.Duration(websocketPresenceTTL) * time.Second,
 	}
 }
 
@@ -140,4 +168,46 @@ func getEnvOptional(key string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func getEnvOptionalInt(key string, fallback int) int {
+	if value, ok := os.LookupEnv(key); ok {
+		parsed, err := strconv.Atoi(value)
+		if err != nil {
+			panic("ENV " + key + " is required number")
+		}
+		return parsed
+	}
+	return fallback
+}
+
+func getEnvOptionalBool(key string, fallback bool) bool {
+	if value, ok := os.LookupEnv(key); ok {
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			panic("ENV " + key + " is required boolean")
+		}
+		return parsed
+	}
+	return fallback
+}
+
+func getEnvOptionalList(key string, fallback []string) []string {
+	value, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(value) == "" {
+		return fallback
+	}
+
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	if len(result) == 0 {
+		return fallback
+	}
+	return result
 }

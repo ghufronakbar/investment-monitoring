@@ -61,7 +61,8 @@ func main() {
 	r.Use(chiMw.StripSlashes)
 	r.Use(chiMw.Recoverer)
 
-	r.Mount("/api", handler.NewRouter(store, rdb, cfg))
+	apiRouter, websocketSvc := handler.NewRouter(store, rdb, cfg)
+	r.Mount("/api", apiRouter)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.PORT,
@@ -90,4 +91,5 @@ func main() {
 	defer cancel()
 
 	_ = srv.Shutdown(ctx)
+	_ = websocketSvc.Shutdown(ctx)
 }

@@ -34,6 +34,10 @@ import (
 	finance_controller "investment_monitoring/internal/module/finance/controller"
 	finance_service "investment_monitoring/internal/module/finance/service"
 
+	// Realtime module
+	websocket_controller "investment_monitoring/internal/module/realtime/websocket/controller"
+	websocket_service "investment_monitoring/internal/module/realtime/websocket/service"
+
 	// Support services
 	dashboard_controller "investment_monitoring/internal/module/support/dashboard/controller"
 	dashboard_service "investment_monitoring/internal/module/support/dashboard/service"
@@ -48,7 +52,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) chi.Router {
+func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) (chi.Router, *websocket_service.Service) {
 	// 1. =========== INITIAL SERVICE / MIDDLEWARE ===========
 	// Support services
 	tokenSvc := token_service.NewService(cfg)
@@ -78,6 +82,9 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	// Finance services
 	financeSvc := finance_service.NewService(db, rdb, cfg)
 
+	// Realtime services
+	websocketSvc := websocket_service.NewService(cfg, tokenSvc)
+
 	// Uploader service
 	uploaderSvc, _ := uploader_service.NewService(db, cfg)
 
@@ -93,6 +100,7 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	monitoringHandler := monitoring_controller.NewHandler(monitoringSvc, db)
 	trackerHandler := tracker_controller.NewHandler(trackerSvc, db)
 	financeHandler := finance_controller.NewHandler(financeSvc, db)
+	websocketHandler := websocket_controller.NewHandler(websocketSvc)
 	uploaderHandler := uploader_controller.NewHandler(uploaderSvc)
 	dashboardHandler := dashboard_controller.NewHandler(dashboardSvc, db)
 
@@ -167,5 +175,10 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 		r.Mount("/dashboard", dashboardHandler.Routes())
 	})
 
-	return r
+	// Realtime routes (handshake auth is handled by websocket service)
+	r.Route("/realtime", func(r chi.Router) {
+		r.Mount("/ws", websocketHandler.Routes())
+	})
+
+	return r, websocketSvc
 }

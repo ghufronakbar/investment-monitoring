@@ -15,6 +15,7 @@ require (
 	github.com/mssola/user_agent v0.6.0
 	github.com/redis/go-redis/v9 v9.17.2
 	golang.org/x/crypto v0.47.0
+	nhooyr.io/websocket v1.8.17
 )
 
 require (

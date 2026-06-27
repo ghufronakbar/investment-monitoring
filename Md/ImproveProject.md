@@ -251,13 +251,13 @@ Catatan improvement:
 
 Bagian ini penting untuk jurnal karena menunjukkan evaluasi kritis terhadap sistem.
 
-### 4.1 Real-time Monitoring Belum Real-time
+### 4.1 Real-time Monitoring Masih Bertahap
 
-Dokumen menyebut real-time monitoring, tetapi implementasi backend saat ini masih HTTP request/response biasa. Belum ada WebSocket, Server-Sent Events, message broker, atau push notification.
+Dokumen menyebut real-time monitoring. Backend sekarang sudah memiliki transport WebSocket minimal untuk connect, ping/pong, dan subscribe/unsubscribe in-memory. Namun delivery domain event secara penuh belum selesai karena Redis Pub/Sub fanout dan integrasi outbox worker ke WebSocket masih tahap berikutnya.
 
 Cara menulis di jurnal:
 
-> Sistem menyediakan near-real-time visibility melalui API dashboard dan data agregat. Untuk mencapai real-time monitoring penuh, sistem dapat ditingkatkan dengan event-driven notification dan streaming update.
+> Sistem mulai menyediakan fondasi real-time delivery melalui WebSocket transport dan outbox event. Untuk mencapai real-time monitoring penuh, sistem masih perlu menghubungkan outbox worker, Redis Pub/Sub, dan authorization topic agar domain event dapat dikirim langsung ke client yang berhak.
 
 ### 4.2 Redis Sudah Mulai Digunakan
 
@@ -608,7 +608,7 @@ Rekomendasi:
 
 Alasan:
 
-Project mengklaim monitoring real-time. Baseline event-driven architecture sudah mulai dibuat melalui PostgreSQL outbox, meskipun delivery real-time seperti WebSocket/SSE belum tersedia.
+Project mengklaim monitoring real-time. Baseline event-driven architecture sudah mulai dibuat melalui PostgreSQL outbox, dan transport WebSocket minimal sudah tersedia. Tahap yang belum selesai adalah delivery domain event dari outbox ke client melalui Redis Pub/Sub dan topic authorization.
 
 Rekomendasi:
 
@@ -636,12 +636,12 @@ Rekomendasi:
 
    - email;
    - notification;
-   - WebSocket/SSE update;
+   - WebSocket update dari outbox event;
    - audit pipeline.
 
 4. Redis atau PostgreSQL Queue
 
-   Untuk tahap awal, PostgreSQL outbox sudah cukup. Redis tetap bisa dipakai untuk cache/rate limit dan nanti bisa ditambah pub-sub jika perlu push update.
+   Untuk tahap awal, PostgreSQL outbox sudah cukup. Redis sudah dipakai untuk cache/rate limit/token revocation dan nanti bisa ditambah Pub/Sub untuk fanout WebSocket lintas instance.
 
 ---
 
@@ -887,7 +887,7 @@ Struktur tulisan yang disarankan:
 - Ticket log berperan sebagai event history yang memungkinkan status hambatan ditelusuri dari waktu ke waktu.
 - Approval bertingkat pada finance module merepresentasikan separation of duties antara auditor, executing agency, dan loan provider.
 - Dashboard berfungsi sebagai decision support layer yang menggabungkan progress fisik, serapan finansial, dan status hambatan.
-- Untuk mencapai real-time monitoring, sistem sudah memiliki fondasi outbox event dan dapat dilanjutkan ke notification worker, Redis pub/sub, WebSocket, atau SSE.
+- Untuk mencapai real-time monitoring, sistem sudah memiliki fondasi outbox event dan transport WebSocket minimal; tahap berikutnya adalah notification worker, Redis Pub/Sub, topic authorization, dan mapping event domain ke topic realtime.
 
 ---
 
