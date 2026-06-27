@@ -128,24 +128,19 @@ Test yang sudah ada:
 
 ## 3. SLA Tracking untuk Ticket
 
-### Status Saat Ini
+### Status Implementasi
 
-Tracker sudah punya status ticket dan ticket log, tetapi belum ada SLA. Sistem belum bisa menandai ticket yang terlambat atau hampir melewati batas waktu.
+Sudah dibuat baseline SLA tracking untuk ticket. SLA disimpan terpisah dari `tickets` agar modelnya bisa dipakai ulang untuk entity lain seperti progress, payment, permit, atau approval workflow.
 
-### Yang Perlu Dibuat
+### Yang Sudah Dibuat
 
-Minimal tambahkan migration field di `tickets` atau table baru `sla_records`.
+Migration baru:
 
-Opsi sederhana di `tickets`:
-
-```sql
-ALTER TABLE tickets
-ADD COLUMN sla_due_at TIMESTAMPTZ,
-ADD COLUMN resolved_at TIMESTAMPTZ,
-ADD COLUMN sla_status TEXT DEFAULT 'ON_TRACK';
+```text
+migrations/20260627090000_add_sla_records.sql
 ```
 
-Opsi lebih fleksibel:
+Table baru:
 
 ```text
 sla_records
@@ -158,26 +153,44 @@ sla_records
 - due_at
 - resolved_at
 - status
+- created_at
+- updated_at
+- deleted_at
 ```
 
-Tambahkan service:
+Query sqlc:
+
+```text
+internal/repository/queries/sla.sql
+- UpsertSLARecord
+- ResolveSLARecord
+- GetSLARecordByEntity
+- TouchSLAStatus
+```
+
+Service baru:
 
 ```text
 internal/module/support/sla/
   service.go
-  params.go
   return.go
 ```
 
-Logic dasar:
+Integrasi tracker:
+
+- `CreateTicket` membuat SLA awal untuk state `OPEN`.
+- `AssignTicket` memindahkan SLA ke state `ASSIGNED` dan owner instansi tujuan.
+- `AddLog` memperbarui SLA saat status berubah dan tetap atomik dengan `ticket_logs`.
+- `CloseTicket` menandai SLA selesai melalui `resolved_at`.
+- Response ticket sekarang menyertakan field `sla`.
+
+Status SLA dihitung dari `due_at`, `resolved_at`, dan warning threshold:
 
 ```text
-if now > due_at:
-  status = SLA_VIOLATED
-else if due_at - now <= warning_threshold:
-  status = SLA_WARNING
-else:
-  status = ON_TRACK
+RESOLVED      jika ticket selesai sebelum due_at
+SLA_WARNING   jika sisa waktu <= warning threshold
+SLA_VIOLATED  jika now/resolved_at melewati due_at
+ON_TRACK      jika masih dalam batas normal
 ```
 
 ### Manfaat
@@ -185,6 +198,13 @@ else:
 - Red tape bisa diukur dari durasi status.
 - Dashboard dapat menampilkan bottleneck per instansi.
 - Cocok dengan niche jurnal `SLA Tracking`.
+
+### Sisa Peningkatan
+
+- Tambahkan endpoint/dashboard khusus SLA agar bottleneck per organisasi terlihat eksplisit.
+- Tambahkan konfigurasi SLA per state atau per jenis ticket, bukan fixed 7 hari.
+- Tambahkan scheduler/worker untuk update status dan mengirim notifikasi warning/escalation.
+- Tambahkan test service SLA dengan clock injection agar kasus warning, violated, dan resolved bisa diuji deterministik.
 
 ---
 

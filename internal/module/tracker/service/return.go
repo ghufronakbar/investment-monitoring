@@ -2,6 +2,7 @@
 package tracker_service
 
 import (
+	sla_service "investment_monitoring/internal/module/support/sla/service"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,20 +11,21 @@ import (
 // ===== TICKETS =====
 
 type TicketReturn struct {
-	ID                uuid.UUID          `json:"id"`
-	Title             string             `json:"title"`
-	Description       string             `json:"description"`
-	Location          string             `json:"location"`
-	EvidenceImageUrls []string           `json:"evidenceImageUrls"`
-	TaskItemID        *uuid.UUID         `json:"taskItemId"`
-	TaskTitle         *string            `json:"taskTitle"`
-	ContractID        uuid.UUID          `json:"contractId"`
-	CurrentStatus     string             `json:"currentStatus"`
-	Creator           TicketActorReturn  `json:"creator"`
-	AssignedTo        *TicketActorReturn `json:"assignedTo"`
-	Logs              []TicketLogReturn  `json:"logs,omitempty"`
-	CreatedAt         time.Time          `json:"createdAt"`
-	LastLogAt         *time.Time         `json:"lastLogAt,omitempty"`
+	ID                uuid.UUID              `json:"id"`
+	Title             string                 `json:"title"`
+	Description       string                 `json:"description"`
+	Location          string                 `json:"location"`
+	EvidenceImageUrls []string               `json:"evidenceImageUrls"`
+	TaskItemID        *uuid.UUID             `json:"taskItemId"`
+	TaskTitle         *string                `json:"taskTitle"`
+	ContractID        uuid.UUID              `json:"contractId"`
+	CurrentStatus     string                 `json:"currentStatus"`
+	Creator           TicketActorReturn      `json:"creator"`
+	AssignedTo        *TicketActorReturn     `json:"assignedTo"`
+	Logs              []TicketLogReturn      `json:"logs,omitempty"`
+	SLA               *sla_service.SLAReturn `json:"sla,omitempty"`
+	CreatedAt         time.Time              `json:"createdAt"`
+	LastLogAt         *time.Time             `json:"lastLogAt,omitempty"`
 }
 
 type TicketActorReturn struct {

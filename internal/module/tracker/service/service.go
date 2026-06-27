@@ -5,8 +5,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"investment_monitoring/config"
+	sla_service "investment_monitoring/internal/module/support/sla/service"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
@@ -16,12 +18,14 @@ import (
 
 type TrackerService struct {
 	store *entity.SQLStore
+	sla   *sla_service.Service
 	cfg   *config.Config
 }
 
 func NewService(store *entity.SQLStore, cfg *config.Config) *TrackerService {
 	return &TrackerService{
 		store: store,
+		sla:   sla_service.NewService(store),
 		cfg:   cfg,
 	}
 }
@@ -87,6 +91,20 @@ func (s *TrackerService) CreateTicket(ctx context.Context, params CreateTicketPa
 			OrganizationID: params.ContractorID,
 			UserID:         params.UserID,
 		})
+		if txErr != nil {
+			return txErr
+		}
+
+		enteredAt := time.Now()
+		_, txErr = q.UpsertSLARecord(ctx, entity.UpsertSLARecordParams{
+			EntityType: sla_service.EntityTypeTicket,
+			EntityID:   ticket.ID,
+			State:      string(entity.TicketStatusEnumOPEN),
+			OwnerOrgID: uuid.NullUUID{UUID: params.ContractorID, Valid: true},
+			EnteredAt:  enteredAt,
+			DueAt:      enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			Status:     sla_service.StatusOnTrack,
+		})
 		return txErr
 	})
 	if err != nil {
@@ -112,6 +130,9 @@ func (s *TrackerService) CreateTicket(ctx context.Context, params CreateTicketPa
 	}
 	if ticket.TaskItemID.Valid {
 		result.TaskItemID = &ticket.TaskItemID.UUID
+	}
+	if err := s.attachTicketSLA(ctx, &result); err != nil {
+		return result, errs.NewInternalServerError(err)
 	}
 
 	return result, nil
@@ -218,6 +239,9 @@ func (s *TrackerService) GetTickets(ctx context.Context, params GetTicketsParams
 		if !t.LastLogAt.IsZero() {
 			tr.LastLogAt = &t.LastLogAt
 		}
+		if err := s.attachTicketSLA(ctx, &tr); err != nil {
+			return nil, errs.NewInternalServerError(err)
+		}
 		ticketReturns = append(ticketReturns, tr)
 	}
 
@@ -291,6 +315,9 @@ func (s *TrackerService) GetTicketByID(ctx context.Context, params GetTicketByID
 			OrgID:   ticket.TicketAssignToID.UUID,
 			OrgName: ticket.AssigneeOrgName.String,
 		}
+	}
+	if err := s.attachTicketSLA(ctx, &result); err != nil {
+		return result, errs.NewInternalServerError(err)
 	}
 
 	return result, nil
@@ -369,6 +396,20 @@ func (s *TrackerService) AssignTicket(ctx context.Context, params AssignTicketPa
 			OrganizationID: params.OrgID,
 			UserID:         params.UserID,
 		})
+		if txErr != nil {
+			return txErr
+		}
+
+		enteredAt := time.Now()
+		_, txErr = q.UpsertSLARecord(ctx, entity.UpsertSLARecordParams{
+			EntityType: sla_service.EntityTypeTicket,
+			EntityID:   params.TicketID,
+			State:      string(nextStatus),
+			OwnerOrgID: uuid.NullUUID{UUID: params.AssignToOrgID, Valid: true},
+			EnteredAt:  enteredAt,
+			DueAt:      enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			Status:     sla_service.StatusOnTrack,
+		})
 		return txErr
 	})
 	if err != nil {
@@ -418,15 +459,50 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 		attachmentUrl = sql.NullString{String: *params.AttachmentUrl, Valid: true}
 	}
 
-	log, err := s.store.CreateTicketLog(ctx, entity.CreateTicketLogParams{
-		Action:         action,
-		Description:    params.Description,
-		AttachmentUrl:  attachmentUrl,
-		PreviousStatus: entity.NullTicketStatusEnum{TicketStatusEnum: currentStatus, Valid: true},
-		NewStatus:      newStatus,
-		TicketID:       params.TicketID,
-		OrganizationID: params.OrgID,
-		UserID:         params.UserID,
+	var log entity.TicketLog
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		var txErr error
+		log, txErr = q.CreateTicketLog(ctx, entity.CreateTicketLogParams{
+			Action:         action,
+			Description:    params.Description,
+			AttachmentUrl:  attachmentUrl,
+			PreviousStatus: entity.NullTicketStatusEnum{TicketStatusEnum: currentStatus, Valid: true},
+			NewStatus:      newStatus,
+			TicketID:       params.TicketID,
+			OrganizationID: params.OrgID,
+			UserID:         params.UserID,
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		if transitionInput == workflow.TrackerInputComment {
+			return nil
+		}
+
+		if newStatus == entity.TicketStatusEnumCLOSED {
+			_, txErr = q.ResolveSLARecord(ctx, entity.ResolveSLARecordParams{
+				EntityType: sla_service.EntityTypeTicket,
+				EntityID:   params.TicketID,
+				ResolvedAt: sql.NullTime{Time: time.Now(), Valid: true},
+			})
+			if txErr == sql.ErrNoRows {
+				return nil
+			}
+			return txErr
+		}
+
+		enteredAt := time.Now()
+		_, txErr = q.UpsertSLARecord(ctx, entity.UpsertSLARecordParams{
+			EntityType: sla_service.EntityTypeTicket,
+			EntityID:   params.TicketID,
+			State:      string(newStatus),
+			OwnerOrgID: uuid.NullUUID{UUID: params.OrgID, Valid: true},
+			EnteredAt:  enteredAt,
+			DueAt:      enteredAt.Add(sla_service.DefaultTicketSLADuration),
+			Status:     sla_service.StatusOnTrack,
+		})
+		return txErr
 	})
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
@@ -474,15 +550,29 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 		return TicketReturn{}, errs.NewBadRequest("TICKET_ALREADY_CLOSED")
 	}
 
-	// Create CLOSED log
-	_, err = s.store.CreateTicketLog(ctx, entity.CreateTicketLogParams{
-		Action:         entity.TicketLogActionEnumRESOLVED,
-		Description:    "Ticket closed by Project Owner",
-		PreviousStatus: entity.NullTicketStatusEnum{TicketStatusEnum: currentStatus, Valid: true},
-		NewStatus:      nextStatus,
-		TicketID:       params.TicketID,
-		OrganizationID: params.OrgID,
-		UserID:         params.UserID,
+	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
+		_, txErr := q.CreateTicketLog(ctx, entity.CreateTicketLogParams{
+			Action:         entity.TicketLogActionEnumRESOLVED,
+			Description:    "Ticket closed by Project Owner",
+			PreviousStatus: entity.NullTicketStatusEnum{TicketStatusEnum: currentStatus, Valid: true},
+			NewStatus:      nextStatus,
+			TicketID:       params.TicketID,
+			OrganizationID: params.OrgID,
+			UserID:         params.UserID,
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		_, txErr = q.ResolveSLARecord(ctx, entity.ResolveSLARecordParams{
+			EntityType: sla_service.EntityTypeTicket,
+			EntityID:   params.TicketID,
+			ResolvedAt: sql.NullTime{Time: time.Now(), Valid: true},
+		})
+		if txErr == sql.ErrNoRows {
+			return nil
+		}
+		return txErr
 	})
 	if err != nil {
 		return TicketReturn{}, errs.NewInternalServerError(err)
@@ -490,4 +580,13 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 
 	// Return updated ticket
 	return s.GetTicketByID(ctx, GetTicketByIDParams{TicketID: params.TicketID})
+}
+
+func (s *TrackerService) attachTicketSLA(ctx context.Context, ticket *TicketReturn) error {
+	sla, err := s.sla.GetTicket(ctx, ticket.ID)
+	if err != nil {
+		return err
+	}
+	ticket.SLA = sla
+	return nil
 }

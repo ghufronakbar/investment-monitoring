@@ -192,12 +192,12 @@ Nilai IT:
 - Current status tidak disimpan sebagai kolom utama di `tickets`, tetapi dihitung dari latest `ticket_logs`.
 - Ini mendekati event-sourced status model: riwayat perubahan menjadi sumber kebenaran.
 - Cocok untuk transparansi birokrasi karena setiap perubahan status punya aktor, organisasi, dan timestamp.
+- SLA ticket sudah mulai dipisahkan ke `sla_records`, sehingga durasi penyelesaian bisa dianalisis tanpa mengubah model utama ticket.
 
 Catatan improvement:
 
-- State machine status sudah mulai diformalisasi di `internal/workflow`; langkah berikutnya adalah memperketat guard transition jika proses bisnis ingin dibuat lebih strict.
-- Saat ini AddLog masih mengizinkan beberapa status dengan validasi yang relatif longgar.
-- Tambahkan SLA tracking, aging ticket, escalation, dan notifikasi.
+- State machine status sudah diformalisasi di `internal/workflow`; langkah berikutnya adalah menambahkan actor guard jika proses bisnis ingin dibuat lebih strict.
+- SLA tracking sudah tersedia sebagai baseline, tetapi dashboard bottleneck, konfigurasi SLA per state, escalation, dan notifikasi masih perlu dibuat.
 - Tambahkan attachment metadata, bukan hanya URL string.
 
 ### 3.5 Finance: Tiered Approval dan Disbursement

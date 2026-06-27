@@ -365,6 +365,21 @@ type ProjectSetting struct {
 	DeletedAt        sql.NullTime `json:"deleted_at"`
 }
 
+type SlaRecord struct {
+	ID         uuid.UUID     `json:"id"`
+	EntityType string        `json:"entity_type"`
+	EntityID   uuid.UUID     `json:"entity_id"`
+	State      string        `json:"state"`
+	OwnerOrgID uuid.NullUUID `json:"owner_org_id"`
+	EnteredAt  time.Time     `json:"entered_at"`
+	DueAt      time.Time     `json:"due_at"`
+	ResolvedAt sql.NullTime  `json:"resolved_at"`
+	Status     string        `json:"status"`
+	CreatedAt  time.Time     `json:"created_at"`
+	UpdatedAt  time.Time     `json:"updated_at"`
+	DeletedAt  sql.NullTime  `json:"deleted_at"`
+}
+
 type TaskItem struct {
 	ID          uuid.UUID     `json:"id"`
 	Title       string        `json:"title"`

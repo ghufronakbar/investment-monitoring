@@ -125,6 +125,7 @@ type Querier interface {
 	GetSCurveData(ctx context.Context, contractID uuid.UUID) (GetSCurveDataRow, error)
 	// Per-task progress for detailed S-Curve
 	GetSCurveDataByTask(ctx context.Context, contractID uuid.UUID) ([]GetSCurveDataByTaskRow, error)
+	GetSLARecordByEntity(ctx context.Context, arg GetSLARecordByEntityParams) (SlaRecord, error)
 	GetTaskByID(ctx context.Context, id uuid.UUID) (TaskItem, error)
 	// ===== S-CURVE DATA =====
 	// Get all leaf task items with their deadlines and weights for plan calculation
@@ -162,9 +163,11 @@ type Querier interface {
 	ListProjects(ctx context.Context) ([]Project, error)
 	// Get all projects where user's organization is a participant (including GOV_PARTNER)
 	ListUserAccessibleProjects(ctx context.Context, userID uuid.UUID) ([]Project, error)
+	ResolveSLARecord(ctx context.Context, arg ResolveSLARecordParams) (SlaRecord, error)
 	// Set password for user (used when user activates account)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) (User, error)
 	SoftDeleteExampleByID(ctx context.Context, id uuid.UUID) (Example, error)
+	TouchSLAStatus(ctx context.Context, arg TouchSLAStatusParams) (SlaRecord, error)
 	UpdateExampleByID(ctx context.Context, arg UpdateExampleByIDParams) (Example, error)
 	// Update organization name and logo
 	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error)
@@ -177,6 +180,9 @@ type Querier interface {
 	// Update user profile (name, image_url)
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error)
 	UpsertProjectSettings(ctx context.Context, arg UpsertProjectSettingsParams) (ProjectSetting, error)
+	// internal/repository/queries/sla.sql
+	// SQLC queries for generic SLA tracking
+	UpsertSLARecord(ctx context.Context, arg UpsertSLARecordParams) (SlaRecord, error)
 }
 
 var _ Querier = (*Queries)(nil)

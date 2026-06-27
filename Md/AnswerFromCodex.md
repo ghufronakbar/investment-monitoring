@@ -294,7 +294,7 @@ if elapsed_time > sla_duration:
     sla_status = "VIOLATED"
 ```
 
-Data yang perlu disimpan:
+Data yang sekarang sudah mulai disimpan di `sla_records`:
 
 - `entity_type`: ticket/progress/payment/permit
 - `entity_id`
@@ -307,8 +307,9 @@ Data yang perlu disimpan:
 
 Implementasi teknis:
 
-- Untuk prototype sederhana, hitung SLA saat query dashboard.
-- Untuk versi lebih matang, gunakan background worker/cron.
+- Untuk prototype saat ini, SLA ticket dibuat saat ticket dibuat/di-assign dan diselesaikan saat ticket closed.
+- Status efektif dihitung dari `due_at`, `resolved_at`, dan warning threshold saat data SLA dibaca.
+- Untuk versi lebih matang, gunakan background worker/cron untuk refresh status dan escalation.
 - Untuk versi event-driven, gunakan domain event + outbox.
 
 Kaitan dengan Redis:
@@ -519,8 +520,8 @@ Yang sudah kuat:
 
 Yang belum kuat:
 
-- formal FSM engine reusable sudah mulai dibuat di `internal/workflow`;
-- SLA tracking belum diimplementasikan eksplisit;
+- formal FSM engine reusable sudah dibuat di `internal/workflow`;
+- SLA tracking ticket sudah ada sebagai baseline, tetapi belum punya dashboard bottleneck, konfigurasi per state, dan escalation worker;
 - Redis belum digunakan;
 - real-time belum benar-benar real-time;
 - audit log global belum ada;
@@ -530,9 +531,9 @@ Yang belum kuat:
 
 Cara menulis:
 
-- Jangan tulis "sistem telah menerapkan SLA tracking penuh" jika belum.
-- Tulis "sistem dirancang dan dapat dikembangkan dengan SLA tracking".
-- Jika ingin menjadikan SLA sebagai hasil, implementasikan minimal prototype SLA sebelum jurnal final.
+- Jangan tulis "sistem telah menerapkan SLA tracking penuh" jika belum ada escalation dan dashboard khusus.
+- Tulis "sistem telah memiliki baseline SLA tracking untuk ticket dan dapat dikembangkan menjadi SLA monitoring lintas workflow".
+- Jika ingin menjadikan SLA sebagai hasil utama, tambahkan simulasi warning/violation dan tampilan bottleneck per organisasi.
 
 ---
 
@@ -550,15 +551,14 @@ FSM transition engine sudah mulai tersedia di `internal/workflow`. Berikutnya, l
 
 Minimal tambahkan diagram dan matriks transisi di dokumen jurnal, lalu perluas unit test jika transisi bisnis dibuat lebih ketat.
 
-### 10.2 Tambahkan SLA Field untuk Ticket
+### 10.2 Lengkapi SLA Tracking untuk Ticket
 
-Minimal:
+Baseline sudah tersedia melalui `sla_records` dan service SLA. Agar lebih kuat untuk jurnal, lanjutkan dengan:
 
-- `sla_due_at`
-- `resolved_at`
-- `sla_status`
-
-Atau jika tidak ubah schema, buat query kalkulasi SLA berdasarkan latest ticket log.
+- endpoint/dashboard SLA;
+- konfigurasi durasi SLA per state atau jenis ticket;
+- scheduler/worker untuk warning dan escalation;
+- test deterministik untuk `ON_TRACK`, `SLA_WARNING`, `SLA_VIOLATED`, dan `RESOLVED`.
 
 ### 10.3 Tambahkan Test untuk Transition
 
