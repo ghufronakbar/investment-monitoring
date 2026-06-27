@@ -22,12 +22,12 @@ import (
 )
 
 type UploaderService struct {
-	store *entity.SQLStore
+	store entity.Store
 	cfg   *config.Config
 	cld   *cloudinary.Cloudinary
 }
 
-func NewService(store *entity.SQLStore, cfg *config.Config) (*UploaderService, error) {
+func NewService(store entity.Store, cfg *config.Config) (*UploaderService, error) {
 	cld, err := cloudinary.NewFromParams(cfg.CLOUDINARY_CLOUD_NAME, cfg.CLOUDINARY_API_KEY, cfg.CLOUDINARY_API_SECRET)
 	if err != nil {
 		return nil, err

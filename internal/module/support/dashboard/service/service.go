@@ -17,12 +17,12 @@ import (
 )
 
 type DashboardService struct {
-	store *entity.SQLStore
+	store entity.Store
 	cache *dashboard_cache.Cache
 	cfg   *config.Config
 }
 
-func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *DashboardService {
+func NewService(store entity.Store, rdb *redis.Client, cfg *config.Config) *DashboardService {
 	return &DashboardService{
 		store: store,
 		cache: dashboard_cache.New(rdb, cfg),

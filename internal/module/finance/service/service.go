@@ -19,14 +19,14 @@ import (
 )
 
 type FinanceService struct {
-	store  *entity.SQLStore
+	store  entity.Store
 	audit  *audit.Service
 	cache  *dashboard_cache.Cache
 	outbox *outbox.Service
 	cfg    *config.Config
 }
 
-func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *FinanceService {
+func NewService(store entity.Store, rdb *redis.Client, cfg *config.Config) *FinanceService {
 	return &FinanceService{
 		store:  store,
 		audit:  audit.NewService(store),

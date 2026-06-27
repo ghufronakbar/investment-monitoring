@@ -16,14 +16,14 @@ import (
 )
 
 type OrganizationService struct {
-	store   *entity.SQLStore
+	store   entity.Store
 	audit   *audit.Service
 	outbox  *outbox.Service
 	mailSvc *mail_service.MailService
 	cfg     *config.Config
 }
 
-func NewService(store *entity.SQLStore, mailSvc *mail_service.MailService, cfg *config.Config) *OrganizationService {
+func NewService(store entity.Store, mailSvc *mail_service.MailService, cfg *config.Config) *OrganizationService {
 	return &OrganizationService{
 		store:   store,
 		audit:   audit.NewService(store),

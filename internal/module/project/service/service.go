@@ -17,13 +17,13 @@ import (
 )
 
 type ProjectService struct {
-	store *entity.SQLStore
+	store entity.Store
 	audit *audit.Service
 	cache *dashboard_cache.Cache
 	cfg   *config.Config
 }
 
-func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *ProjectService {
+func NewService(store entity.Store, rdb *redis.Client, cfg *config.Config) *ProjectService {
 	return &ProjectService{
 		store: store,
 		audit: audit.NewService(store),

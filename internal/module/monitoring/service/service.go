@@ -21,14 +21,14 @@ import (
 )
 
 type MonitoringService struct {
-	store  *entity.SQLStore
+	store  entity.Store
 	audit  *audit.Service
 	cache  *dashboard_cache.Cache
 	outbox *outbox.Service
 	cfg    *config.Config
 }
 
-func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *MonitoringService {
+func NewService(store entity.Store, rdb *redis.Client, cfg *config.Config) *MonitoringService {
 	return &MonitoringService{
 		store:  store,
 		audit:  audit.NewService(store),

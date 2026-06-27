@@ -41,6 +41,15 @@ Status eksekusi saat ini:
 - menambahkan unit test outbox payload/realtime mapper edge case;
 - menambahkan unit test validator utility;
 - mengubah WebSocket controller test agar skip saat environment sandbox tidak mengizinkan httptest listener.
+
+2026-06-28:
+- refactor service module utama dari concrete `*entity.SQLStore` ke interface `entity.Store`;
+- service yang direfactor: project, monitoring, tracker, finance, dashboard, uploader, dan organization;
+- menambahkan finance service tests untuk payment summary, payment detail mapping, dan validasi approval sebelum transaksi;
+- menambahkan project service tests untuk list accessible project, configure settings validation, dan assign vendor validation;
+- menambahkan monitoring service tests untuk WBS validation, leaf task mapping, delete task guard, dan parent validation;
+- menambahkan tracker service tests untuk ticket list/detail mapping dan assign ticket validation;
+- menambahkan dashboard service tests untuk S-Curve, stats, dan domain error mapping.
 ```
 
 Catatan:
@@ -894,7 +903,7 @@ Target realistis:
 
 ### Sprint 1: Foundation Testability
 
-- [ ] Refactor service `store *entity.SQLStore` ke `store entity.Store` untuk module utama.
+- [x] Refactor service `store *entity.SQLStore` ke `store entity.Store` untuk module utama.
 - [x] Buat fake store helper untuk policy/service tests.
 - [ ] Buat helper assertion error code.
 - [x] Buat helper JWT/test config.
@@ -909,24 +918,24 @@ Target realistis:
 
 ### Sprint 3: Monitoring dan Tracker
 
-- [ ] Monitoring service tests.
+- [x] Monitoring service tests.
 - [ ] WBS edge case tambahan.
-- [ ] Tracker service tests.
+- [x] Tracker service tests.
 - [x] SLA service tests.
 - [ ] Tracker controller tests.
 
 ### Sprint 4: Finance dan Project
 
-- [ ] Finance service tests.
+- [x] Finance service tests.
 - [ ] Finance controller tests.
-- [ ] Project service tests.
+- [x] Project service tests.
 - [ ] Project controller tests.
 
 ### Sprint 5: Support, Outbox, Realtime
 
 - [x] Uploader service tests.
 - [x] Dashboard cache tests.
-- [ ] Dashboard service tests.
+- [x] Dashboard service tests.
 - [x] Outbox payload dan realtime mapper tests.
 - [ ] Outbox processor tests.
 - [x] Realtime hardening tests.
@@ -937,7 +946,7 @@ Target realistis:
 Unit test project dianggap layak jika:
 
 - [x] `go test ./...` pass tanpa external DB/Redis/network;
-- [ ] service high-risk punya test success dan failure path;
+- [x] service high-risk punya test success dan failure path;
 - [ ] policy layer seluruh rule utama tertutup;
 - [x] workflow transition seluruh invalid path tertutup;
 - [ ] security-sensitive auth/token/rate-limit/upload tertutup;
