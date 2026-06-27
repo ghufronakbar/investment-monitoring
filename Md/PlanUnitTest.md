@@ -63,6 +63,8 @@ Status eksekusi saat ini:
 - menambahkan project controller contract tests untuk list, get detail, create, validation error, dan assign vendor;
 - menambahkan finance controller contract tests untuk summary, create payment request, validation error, dan auditor approval;
 - menambahkan tracker controller contract tests untuk list ticket, create ticket, validation error, assign ticket, dan add log.
+- menambahkan helper assertion reusable di `internal/testutil` untuk AppError dan response contract;
+- refactor controller/service tests utama agar memakai helper assertion tersebut.
 ```
 
 Catatan:
@@ -918,7 +920,7 @@ Target realistis:
 
 - [x] Refactor service `store *entity.SQLStore` ke `store entity.Store` untuk module utama.
 - [x] Buat fake store helper untuk policy/service tests.
-- [ ] Buat helper assertion error code.
+- [x] Buat helper assertion error code.
 - [x] Buat helper JWT/test config.
 
 ### Sprint 2: Policy dan Security

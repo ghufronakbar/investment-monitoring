@@ -3,12 +3,11 @@ package monitoring_service
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"testing"
 	"time"
 
 	"investment_monitoring/internal/repository/entity"
-	"investment_monitoring/pkg/errs"
+	"investment_monitoring/internal/testutil"
 
 	"github.com/google/uuid"
 )
@@ -155,7 +154,7 @@ func TestDeleteTaskRejectsTaskWithChildren(t *testing.T) {
 	}
 
 	err := NewService(store, nil, nil).DeleteTask(context.Background(), DeleteTaskParams{TaskID: taskID})
-	assertAppError(t, err, "CANNOT_DELETE_TASK_WITH_CHILDREN")
+	testutil.AssertAppError(t, err, "CANNOT_DELETE_TASK_WITH_CHILDREN")
 }
 
 func TestValidateTaskMutationRejectsParentErrors(t *testing.T) {
@@ -166,25 +165,25 @@ func TestValidateTaskMutationRejectsParentErrors(t *testing.T) {
 
 	t.Run("task cannot parent itself", func(t *testing.T) {
 		err := NewService(&fakeStore{}, nil, nil).validateTaskMutation(context.Background(), contractID, &taskID, &taskID, deadline, 10)
-		assertAppError(t, err, "TASK_CANNOT_PARENT_ITSELF")
+		testutil.AssertAppError(t, err, "TASK_CANNOT_PARENT_ITSELF")
 	})
 
 	t.Run("missing parent", func(t *testing.T) {
 		store := &fakeStore{taskErr: sql.ErrNoRows}
 		err := NewService(store, nil, nil).validateTaskMutation(context.Background(), contractID, &taskID, &parentID, deadline, 10)
-		assertAppError(t, err, "PARENT_TASK_NOT_FOUND")
+		testutil.AssertAppError(t, err, "PARENT_TASK_NOT_FOUND")
 	})
 
 	t.Run("parent must be in same contract", func(t *testing.T) {
 		store := &fakeStore{task: entity.TaskItem{ID: parentID, ContractID: uuid.New(), Deadline: deadline.Add(time.Hour)}}
 		err := NewService(store, nil, nil).validateTaskMutation(context.Background(), contractID, &taskID, &parentID, deadline, 10)
-		assertAppError(t, err, "PARENT_TASK_NOT_IN_CONTRACT")
+		testutil.AssertAppError(t, err, "PARENT_TASK_NOT_IN_CONTRACT")
 	})
 
 	t.Run("child deadline cannot exceed parent", func(t *testing.T) {
 		store := &fakeStore{task: entity.TaskItem{ID: parentID, ContractID: contractID, Deadline: deadline.Add(-time.Hour)}}
 		err := NewService(store, nil, nil).validateTaskMutation(context.Background(), contractID, &taskID, &parentID, deadline, 10)
-		assertAppError(t, err, "CHILD_DEADLINE_EXCEEDS_PARENT")
+		testutil.AssertAppError(t, err, "CHILD_DEADLINE_EXCEEDS_PARENT")
 	})
 }
 
@@ -195,19 +194,4 @@ func contains(values []string, want string) bool {
 		}
 	}
 	return false
-}
-
-func assertAppError(t *testing.T, err error, wantMessage string) {
-	t.Helper()
-
-	if err == nil {
-		t.Fatalf("err = nil, want %s", wantMessage)
-	}
-	var appErr *errs.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("err = %T %v, want AppError", err, err)
-	}
-	if appErr.Message != wantMessage {
-		t.Fatalf("message = %s, want %s", appErr.Message, wantMessage)
-	}
 }

@@ -2,7 +2,6 @@ package finance_controller
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +12,7 @@ import (
 	finance_service "investment_monitoring/internal/module/finance/service"
 	token_service "investment_monitoring/internal/module/support/token/service"
 	"investment_monitoring/internal/repository/entity"
+	"investment_monitoring/internal/testutil"
 
 	"github.com/google/uuid"
 )
@@ -94,7 +94,7 @@ func TestFinanceSummaryContract(t *testing.T) {
 	req := requestWithUser(http.MethodGet, "/project/"+projectID.String()+"/summary", nil, userID)
 	handler.Routes().ServeHTTP(rr, req)
 
-	assertResponse(t, rr, http.StatusOK, "SUCCESS_GET_PAYMENT_SUMMARY")
+	testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_GET_PAYMENT_SUMMARY")
 }
 
 func TestFinanceCreatePaymentRequestContract(t *testing.T) {
@@ -115,14 +115,14 @@ func TestFinanceCreatePaymentRequestContract(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := requestWithUser(http.MethodPost, "/project/"+projectID.String()+"/request", strings.NewReader(body), userID)
 		handler.Routes().ServeHTTP(rr, req)
-		assertResponse(t, rr, http.StatusOK, "SUCCESS_CREATE_PAYMENT_REQUEST")
+		testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_CREATE_PAYMENT_REQUEST")
 	})
 
 	t.Run("validation", func(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := requestWithUser(http.MethodPost, "/project/"+projectID.String()+"/request", strings.NewReader(`{"title":""}`), userID)
 		handler.Routes().ServeHTTP(rr, req)
-		assertResponse(t, rr, http.StatusBadRequest, "VALIDATION_FAILED")
+		testutil.AssertResponse(t, rr, http.StatusBadRequest, "VALIDATION_FAILED")
 	})
 }
 
@@ -150,36 +150,11 @@ func TestFinanceApproveAuditorContract(t *testing.T) {
 	req := requestWithUser(http.MethodPut, "/request/"+requestID.String()+"/approve-auditor", strings.NewReader(`{"action":"APPROVE"}`), userID)
 	handler.Routes().ServeHTTP(rr, req)
 
-	assertResponse(t, rr, http.StatusOK, "SUCCESS_APPROVE_BY_AUDITOR")
+	testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_APPROVE_BY_AUDITOR")
 }
 
 func requestWithUser(method, target string, body io.Reader, userID uuid.UUID) *http.Request {
 	req := httptest.NewRequest(method, target, body)
 	claims := &token_service.AccessTokenClaims{ID: userID, Email: "user@example.com"}
 	return req.WithContext(context.WithValue(req.Context(), internal_middleware.UserContextKey, claims))
-}
-
-type responseBody struct {
-	ResponseMessage  string            `json:"responseMessage"`
-	Data             any               `json:"data"`
-	ValidationErrors map[string]string `json:"validationErrors"`
-}
-
-func assertResponse(t *testing.T, rr *httptest.ResponseRecorder, wantStatus int, wantMessage string) {
-	t.Helper()
-	if rr.Code != wantStatus {
-		t.Fatalf("status = %d, want %d; body=%s", rr.Code, wantStatus, rr.Body.String())
-	}
-	var body responseBody
-	decodeBody(t, rr, &body)
-	if body.ResponseMessage != wantMessage {
-		t.Fatalf("response message = %s, want %s", body.ResponseMessage, wantMessage)
-	}
-}
-
-func decodeBody(t *testing.T, rr *httptest.ResponseRecorder, dest any) {
-	t.Helper()
-	if err := json.Unmarshal(rr.Body.Bytes(), dest); err != nil {
-		t.Fatalf("decode body: %v; body=%s", err, rr.Body.String())
-	}
 }

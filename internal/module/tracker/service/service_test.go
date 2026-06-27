@@ -3,12 +3,11 @@ package tracker_service
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"testing"
 	"time"
 
 	"investment_monitoring/internal/repository/entity"
-	"investment_monitoring/pkg/errs"
+	"investment_monitoring/internal/testutil"
 
 	"github.com/google/uuid"
 )
@@ -242,7 +241,7 @@ func TestAssignTicketPreTransactionValidation(t *testing.T) {
 			TicketID:      ticketID,
 			AssignToOrgID: assignToOrgID,
 		})
-		assertAppError(t, err, "TICKET_ALREADY_CLOSED")
+		testutil.AssertAppError(t, err, "TICKET_ALREADY_CLOSED")
 	})
 
 	t.Run("assignee must be gov partner", func(t *testing.T) {
@@ -254,7 +253,7 @@ func TestAssignTicketPreTransactionValidation(t *testing.T) {
 			TicketID:      ticketID,
 			AssignToOrgID: assignToOrgID,
 		})
-		assertAppError(t, err, "ASSIGNEE_MUST_BE_GOV_PARTNER")
+		testutil.AssertAppError(t, err, "ASSIGNEE_MUST_BE_GOV_PARTNER")
 	})
 
 	t.Run("assignee must participate in project", func(t *testing.T) {
@@ -268,26 +267,11 @@ func TestAssignTicketPreTransactionValidation(t *testing.T) {
 			TicketID:      ticketID,
 			AssignToOrgID: assignToOrgID,
 		})
-		assertAppError(t, err, "GOV_PARTNER_NOT_IN_PROJECT")
+		testutil.AssertAppError(t, err, "GOV_PARTNER_NOT_IN_PROJECT")
 	})
 }
 
 func TestGetTicketsMissingContract(t *testing.T) {
 	_, err := NewService(&fakeStore{contractErr: sql.ErrNoRows}, nil, nil).GetTickets(context.Background(), GetTicketsParams{ProjectID: uuid.New()})
-	assertAppError(t, err, "CONTRACT_NOT_FOUND")
-}
-
-func assertAppError(t *testing.T, err error, wantMessage string) {
-	t.Helper()
-
-	if err == nil {
-		t.Fatalf("err = nil, want %s", wantMessage)
-	}
-	var appErr *errs.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("err = %T %v, want AppError", err, err)
-	}
-	if appErr.Message != wantMessage {
-		t.Fatalf("message = %s, want %s", appErr.Message, wantMessage)
-	}
+	testutil.AssertAppError(t, err, "CONTRACT_NOT_FOUND")
 }

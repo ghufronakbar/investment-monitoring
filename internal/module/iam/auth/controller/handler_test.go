@@ -2,13 +2,13 @@ package auth_controller
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	auth_service "investment_monitoring/internal/module/iam/auth/service"
+	"investment_monitoring/internal/testutil"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
@@ -61,9 +61,9 @@ func TestCheckEmailContract(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/check-email", strings.NewReader(`{"email":"user@example.com"}`))
 	handler.Routes().ServeHTTP(rr, req)
 
-	assertResponse(t, rr, http.StatusOK, "SUCCESS_CHECK_EMAIL")
-	var body responseBody
-	decodeBody(t, rr, &body)
+	testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_CHECK_EMAIL")
+	var body testutil.ResponseBody
+	testutil.DecodeBody(t, rr, &body)
 	data := body.Data.(map[string]any)
 	if data["status"] != string(auth_service.EmailStatusLoginReady) {
 		t.Fatalf("status = %v, want LOGIN_READY", data["status"])
@@ -94,9 +94,9 @@ func TestLoginContract(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"email":"user@example.com","password":"password123"}`))
 	handler.Routes().ServeHTTP(rr, req)
 
-	assertResponse(t, rr, http.StatusOK, "SUCCESS_LOGIN")
-	var body responseBody
-	decodeBody(t, rr, &body)
+	testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_LOGIN")
+	var body testutil.ResponseBody
+	testutil.DecodeBody(t, rr, &body)
 	data := body.Data.(map[string]any)
 	if data["accessToken"] != "access" || data["refreshToken"] != "refresh" {
 		t.Fatalf("data = %+v, want tokens", data)
@@ -118,9 +118,9 @@ func TestAuthControllerValidationAndServiceErrorContracts(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"email":"bad","password":"short"}`))
 		handler.Routes().ServeHTTP(rr, req)
 
-		assertResponse(t, rr, http.StatusBadRequest, "VALIDATION_FAILED")
-		var body responseBody
-		decodeBody(t, rr, &body)
+		testutil.AssertResponse(t, rr, http.StatusBadRequest, "VALIDATION_FAILED")
+		var body testutil.ResponseBody
+		testutil.DecodeBody(t, rr, &body)
 		if body.ValidationErrors["email"] == "" || body.ValidationErrors["password"] == "" {
 			t.Fatalf("validation errors = %+v, want email and password", body.ValidationErrors)
 		}
@@ -131,31 +131,6 @@ func TestAuthControllerValidationAndServiceErrorContracts(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"email":"user@example.com","password":"password123"}`))
 		handler.Routes().ServeHTTP(rr, req)
 
-		assertResponse(t, rr, http.StatusUnauthorized, "INVALID_CREDENTIALS")
+		testutil.AssertResponse(t, rr, http.StatusUnauthorized, "INVALID_CREDENTIALS")
 	})
-}
-
-type responseBody struct {
-	ResponseMessage  string            `json:"responseMessage"`
-	Data             any               `json:"data"`
-	ValidationErrors map[string]string `json:"validationErrors"`
-}
-
-func assertResponse(t *testing.T, rr *httptest.ResponseRecorder, wantStatus int, wantMessage string) {
-	t.Helper()
-	if rr.Code != wantStatus {
-		t.Fatalf("status = %d, want %d; body=%s", rr.Code, wantStatus, rr.Body.String())
-	}
-	var body responseBody
-	decodeBody(t, rr, &body)
-	if body.ResponseMessage != wantMessage {
-		t.Fatalf("response message = %s, want %s", body.ResponseMessage, wantMessage)
-	}
-}
-
-func decodeBody(t *testing.T, rr *httptest.ResponseRecorder, dest any) {
-	t.Helper()
-	if err := json.Unmarshal(rr.Body.Bytes(), dest); err != nil {
-		t.Fatalf("decode body: %v; body=%s", err, rr.Body.String())
-	}
 }

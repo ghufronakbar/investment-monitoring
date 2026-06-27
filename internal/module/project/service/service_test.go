@@ -3,12 +3,11 @@ package project_service
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"testing"
 	"time"
 
 	"investment_monitoring/internal/repository/entity"
-	"investment_monitoring/pkg/errs"
+	"investment_monitoring/internal/testutil"
 
 	"github.com/google/uuid"
 )
@@ -101,7 +100,7 @@ func TestConfigureSettingsValidatesBeforeStoreMutation(t *testing.T) {
 		TotalBudget:      1000,
 		Currency:         "IDR",
 	})
-	assertAppError(t, err, "BASELINE_DEADLINE_BEFORE_START_DATE")
+	testutil.AssertAppError(t, err, "BASELINE_DEADLINE_BEFORE_START_DATE")
 }
 
 func TestAssignVendorPreTransactionValidation(t *testing.T) {
@@ -122,7 +121,7 @@ func TestAssignVendorPreTransactionValidation(t *testing.T) {
 		}
 
 		_, err := NewService(store, nil, nil).AssignVendor(context.Background(), params)
-		assertAppError(t, err, "PROJECT_SETTINGS_REQUIRED")
+		testutil.AssertAppError(t, err, "PROJECT_SETTINGS_REQUIRED")
 	})
 
 	t.Run("contract value must be below total budget", func(t *testing.T) {
@@ -132,7 +131,7 @@ func TestAssignVendorPreTransactionValidation(t *testing.T) {
 		}
 
 		_, err := NewService(store, nil, nil).AssignVendor(context.Background(), params)
-		assertAppError(t, err, "CONTRACT_VALUE_EXCEEDS_BUDGET")
+		testutil.AssertAppError(t, err, "CONTRACT_VALUE_EXCEEDS_BUDGET")
 	})
 
 	t.Run("organization must be contractor", func(t *testing.T) {
@@ -143,21 +142,6 @@ func TestAssignVendorPreTransactionValidation(t *testing.T) {
 		}
 
 		_, err := NewService(store, nil, nil).AssignVendor(context.Background(), params)
-		assertAppError(t, err, "ORGANIZATION_NOT_CONTRACTOR")
+		testutil.AssertAppError(t, err, "ORGANIZATION_NOT_CONTRACTOR")
 	})
-}
-
-func assertAppError(t *testing.T, err error, wantMessage string) {
-	t.Helper()
-
-	if err == nil {
-		t.Fatalf("err = nil, want %s", wantMessage)
-	}
-	var appErr *errs.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("err = %T %v, want AppError", err, err)
-	}
-	if appErr.Message != wantMessage {
-		t.Fatalf("message = %s, want %s", appErr.Message, wantMessage)
-	}
 }

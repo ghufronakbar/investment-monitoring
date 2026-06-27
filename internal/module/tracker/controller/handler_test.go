@@ -2,7 +2,6 @@ package tracker_controller
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +12,7 @@ import (
 	token_service "investment_monitoring/internal/module/support/token/service"
 	tracker_service "investment_monitoring/internal/module/tracker/service"
 	"investment_monitoring/internal/repository/entity"
+	"investment_monitoring/internal/testutil"
 
 	"github.com/google/uuid"
 )
@@ -98,7 +98,7 @@ func TestTrackerGetTicketsContract(t *testing.T) {
 	req := requestWithUser(http.MethodGet, "/project/"+projectID.String()+"/ticket?status=open", nil, userID)
 	handler.Routes().ServeHTTP(rr, req)
 
-	assertResponse(t, rr, http.StatusOK, "SUCCESS_GET_TICKETS")
+	testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_GET_TICKETS")
 }
 
 func TestTrackerCreateTicketContract(t *testing.T) {
@@ -120,14 +120,14 @@ func TestTrackerCreateTicketContract(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := requestWithUser(http.MethodPost, "/project/"+projectID.String()+"/ticket", strings.NewReader(body), userID)
 		handler.Routes().ServeHTTP(rr, req)
-		assertResponse(t, rr, http.StatusOK, "SUCCESS_CREATE_TICKET")
+		testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_CREATE_TICKET")
 	})
 
 	t.Run("validation", func(t *testing.T) {
 		rr := httptest.NewRecorder()
 		req := requestWithUser(http.MethodPost, "/project/"+projectID.String()+"/ticket", strings.NewReader(`{"title":""}`), userID)
 		handler.Routes().ServeHTTP(rr, req)
-		assertResponse(t, rr, http.StatusBadRequest, "VALIDATION_FAILED")
+		testutil.AssertResponse(t, rr, http.StatusBadRequest, "VALIDATION_FAILED")
 	})
 }
 
@@ -162,41 +162,16 @@ func TestTrackerAssignAndAddLogContracts(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := requestWithUser(http.MethodPut, "/ticket/"+ticketID.String()+"/assign", strings.NewReader(`{"assignToOrgId":"`+assignToOrgID.String()+`"}`), userID)
 	handler.Routes().ServeHTTP(rr, req)
-	assertResponse(t, rr, http.StatusOK, "SUCCESS_ASSIGN_TICKET")
+	testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_ASSIGN_TICKET")
 
 	rr = httptest.NewRecorder()
 	req = requestWithUser(http.MethodPost, "/ticket/"+ticketID.String()+"/log", strings.NewReader(`{"description":"Started","newStatus":"IN_PROGRESS"}`), userID)
 	handler.Routes().ServeHTTP(rr, req)
-	assertResponse(t, rr, http.StatusOK, "SUCCESS_ADD_LOG")
+	testutil.AssertResponse(t, rr, http.StatusOK, "SUCCESS_ADD_LOG")
 }
 
 func requestWithUser(method, target string, body io.Reader, userID uuid.UUID) *http.Request {
 	req := httptest.NewRequest(method, target, body)
 	claims := &token_service.AccessTokenClaims{ID: userID, Email: "user@example.com"}
 	return req.WithContext(context.WithValue(req.Context(), internal_middleware.UserContextKey, claims))
-}
-
-type responseBody struct {
-	ResponseMessage  string            `json:"responseMessage"`
-	Data             any               `json:"data"`
-	ValidationErrors map[string]string `json:"validationErrors"`
-}
-
-func assertResponse(t *testing.T, rr *httptest.ResponseRecorder, wantStatus int, wantMessage string) {
-	t.Helper()
-	if rr.Code != wantStatus {
-		t.Fatalf("status = %d, want %d; body=%s", rr.Code, wantStatus, rr.Body.String())
-	}
-	var body responseBody
-	decodeBody(t, rr, &body)
-	if body.ResponseMessage != wantMessage {
-		t.Fatalf("response message = %s, want %s", body.ResponseMessage, wantMessage)
-	}
-}
-
-func decodeBody(t *testing.T, rr *httptest.ResponseRecorder, dest any) {
-	t.Helper()
-	if err := json.Unmarshal(rr.Body.Bytes(), dest); err != nil {
-		t.Fatalf("decode body: %v; body=%s", err, rr.Body.String())
-	}
 }

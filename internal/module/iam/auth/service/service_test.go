@@ -10,7 +10,7 @@ import (
 	"investment_monitoring/config"
 	token_service "investment_monitoring/internal/module/support/token/service"
 	"investment_monitoring/internal/repository/entity"
-	"investment_monitoring/pkg/errs"
+	"investment_monitoring/internal/testutil"
 	"investment_monitoring/pkg/utils"
 
 	"github.com/google/uuid"
@@ -150,7 +150,7 @@ func TestLoginFailurePaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := newTestAuthService(tt.store).Login(context.Background(), LoginParams{Email: "user@example.com", Password: tt.password})
-			assertAppError(t, err, tt.want)
+			testutil.AssertAppError(t, err, tt.want)
 		})
 	}
 }
@@ -182,7 +182,7 @@ func TestSetPassword(t *testing.T) {
 	t.Run("rejects already set password", func(t *testing.T) {
 		store := &fakeStore{user: entity.User{ID: userID, Password: sql.NullString{String: "hash", Valid: true}}}
 		_, err := newTestAuthService(store).SetPassword(context.Background(), SetPasswordParams{Email: "user@example.com", Password: "password123"})
-		assertAppError(t, err, "PASSWORD_ALREADY_SET")
+		testutil.AssertAppError(t, err, "PASSWORD_ALREADY_SET")
 	})
 }
 
@@ -215,10 +215,10 @@ func TestLogoutAndRevokeAllRequireRedis(t *testing.T) {
 	}
 
 	_, err = svc.Logout(context.Background(), LogoutParams{RefreshToken: refreshToken})
-	assertAppError(t, err, "INTERNAL_SERVER_ERROR")
+	testutil.AssertAppError(t, err, "INTERNAL_SERVER_ERROR")
 
 	_, err = svc.RevokeAll(context.Background(), RevokeAllParams{RefreshToken: refreshToken})
-	assertAppError(t, err, "INTERNAL_SERVER_ERROR")
+	testutil.AssertAppError(t, err, "INTERNAL_SERVER_ERROR")
 }
 
 func TestRefreshTokenKeyHelpersAndTTL(t *testing.T) {
@@ -243,19 +243,4 @@ func newTestAuthService(store entity.Store) *AuthService {
 		REDIS_PREFIX:              "test",
 	}
 	return NewService(store, token_service.NewService(cfg), nil, cfg)
-}
-
-func assertAppError(t *testing.T, err error, wantMessage string) {
-	t.Helper()
-
-	if err == nil {
-		t.Fatalf("err = nil, want %s", wantMessage)
-	}
-	var appErr *errs.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("err = %T %v, want AppError", err, err)
-	}
-	if appErr.Message != wantMessage {
-		t.Fatalf("message = %s, want %s", appErr.Message, wantMessage)
-	}
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"investment_monitoring/internal/repository/entity"
-	"investment_monitoring/pkg/errs"
+	"investment_monitoring/internal/testutil"
 
 	"github.com/google/uuid"
 )
@@ -153,26 +153,11 @@ func TestGetStatsMapsTicketStatsAndProgress(t *testing.T) {
 func TestGetDashboardReturnsDomainErrors(t *testing.T) {
 	t.Run("s-curve missing settings", func(t *testing.T) {
 		_, err := NewService(&fakeStore{settingsErr: sql.ErrNoRows}, nil, nil).GetSCurve(context.Background(), GetSCurveParams{ProjectID: uuid.New()})
-		assertAppError(t, err, "PROJECT_SETTINGS_NOT_FOUND")
+		testutil.AssertAppError(t, err, "PROJECT_SETTINGS_NOT_FOUND")
 	})
 
 	t.Run("stats store error", func(t *testing.T) {
 		_, err := NewService(&fakeStore{settingsErr: errors.New("db down")}, nil, nil).GetStats(context.Background(), GetStatsParams{ProjectID: uuid.New()})
-		assertAppError(t, err, "INTERNAL_SERVER_ERROR")
+		testutil.AssertAppError(t, err, "INTERNAL_SERVER_ERROR")
 	})
-}
-
-func assertAppError(t *testing.T, err error, wantMessage string) {
-	t.Helper()
-
-	if err == nil {
-		t.Fatalf("err = nil, want %s", wantMessage)
-	}
-	var appErr *errs.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("err = %T %v, want AppError", err, err)
-	}
-	if appErr.Message != wantMessage {
-		t.Fatalf("message = %s, want %s", appErr.Message, wantMessage)
-	}
 }

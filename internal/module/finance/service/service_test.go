@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"investment_monitoring/internal/repository/entity"
-	"investment_monitoring/pkg/errs"
+	"investment_monitoring/internal/testutil"
 
 	"github.com/google/uuid"
 )
@@ -164,7 +164,7 @@ func TestGetPaymentSummaryReturnsDomainErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := NewService(tt.store, nil, nil).GetPaymentSummary(context.Background(), GetPaymentSummaryParams{ProjectID: uuid.New()})
-			assertAppError(t, err, tt.wantMsg)
+			testutil.AssertAppError(t, err, tt.wantMsg)
 		})
 	}
 }
@@ -245,7 +245,7 @@ func TestFinanceApprovalPreTransactionValidation(t *testing.T) {
 			OrgID:     orgID,
 			Action:    "APPROVE",
 		})
-		assertAppError(t, err, "NOT_CONTRACT_AUDITOR")
+		testutil.AssertAppError(t, err, "NOT_CONTRACT_AUDITOR")
 	})
 
 	t.Run("auditor invalid transition stops before transaction", func(t *testing.T) {
@@ -262,7 +262,7 @@ func TestFinanceApprovalPreTransactionValidation(t *testing.T) {
 			OrgID:     orgID,
 			Action:    "APPROVE",
 		})
-		assertAppError(t, err, "INVALID_STATUS_TRANSITION")
+		testutil.AssertAppError(t, err, "INVALID_STATUS_TRANSITION")
 	})
 
 	t.Run("agency must match contract executing agency", func(t *testing.T) {
@@ -279,21 +279,6 @@ func TestFinanceApprovalPreTransactionValidation(t *testing.T) {
 			OrgID:     orgID,
 			Action:    "APPROVE",
 		})
-		assertAppError(t, err, "NOT_CONTRACT_EXECUTING_AGENCY")
+		testutil.AssertAppError(t, err, "NOT_CONTRACT_EXECUTING_AGENCY")
 	})
-}
-
-func assertAppError(t *testing.T, err error, wantMessage string) {
-	t.Helper()
-
-	if err == nil {
-		t.Fatalf("err = nil, want %s", wantMessage)
-	}
-	var appErr *errs.AppError
-	if !errors.As(err, &appErr) {
-		t.Fatalf("err = %T %v, want AppError", err, err)
-	}
-	if appErr.Message != wantMessage {
-		t.Fatalf("message = %s, want %s", appErr.Message, wantMessage)
-	}
 }
