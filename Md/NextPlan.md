@@ -355,32 +355,27 @@ Integrasi service:
 
 ## 6. Refresh Token Revocation
 
-### Status Saat Ini
+### Status Implementasi
 
-Access token dan refresh token berbasis JWT stateless. Refresh token bisa dipakai sampai expired selama secret valid. Belum ada logout/revoke server-side.
+Refresh token revocation sudah dibuat dengan Redis sebagai storage blacklist. Access token tetap stateless JWT, sedangkan refresh token sekarang memiliki `jti`, `iat`, dan `exp` sehingga bisa direvoke secara server-side.
 
-### Yang Perlu Dibuat
+### Yang Sudah Dibuat
 
-Tambahkan `jti` pada refresh token claims.
-
-Pilihan storage:
+Refresh token claims:
 
 ```text
-refresh_sessions
-- id / jti
-- user_id
-- token_hash
-- issued_at
-- expires_at
-- revoked_at
-- user_agent
-- ip_address
+jti        -> jwt.RegisteredClaims.ID
+iat        -> jwt.RegisteredClaims.IssuedAt
+exp        -> jwt.RegisteredClaims.ExpiresAt
+user id    -> custom claim id
+email      -> custom claim email
 ```
 
-Atau gunakan Redis:
+Redis keys:
 
 ```text
-blacklist:refresh:{jti} -> expires with token TTL
+{REDIS_PREFIX}:blacklist:refresh:{jti} -> TTL sampai refresh token expire
+{REDIS_PREFIX}:revoke-all:refresh:{user_id} -> cutoff unix nano dengan TTL refresh token
 ```
 
 Endpoint:
@@ -390,11 +385,43 @@ POST /iam/auth/logout
 POST /iam/auth/revoke-all
 ```
 
+Behavior:
+
+```text
+login:
+  generate refresh token dengan jti
+
+refresh-token:
+  validate signature/expiry
+  cek jti blacklist
+  cek revoke-all cutoff user
+  generate access token baru
+  generate refresh token baru
+  blacklist refresh token lama
+
+logout:
+  validate refresh token
+  blacklist jti sampai token expire
+
+revoke-all:
+  validate refresh token
+  set revoke-all cutoff untuk user
+  blacklist refresh token yang dipakai
+```
+
+Redis connection dibuat optional di `cmd/api/main.go`: jika Redis tidak tersedia, server tetap berjalan dan refresh token biasa tetap bisa dipakai, tetapi endpoint logout/revoke-all membutuhkan Redis.
+
 ### Manfaat
 
 - Logout benar-benar memutus sesi.
 - Token bocor bisa direvoke.
 - Meningkatkan security posture sistem.
+
+### Sisa Peningkatan
+
+- Tambahkan device/session list jika ingin user bisa revoke session tertentu dari UI.
+- Tambahkan hashing token jika suatu saat refresh session disimpan di PostgreSQL.
+- Tambahkan test untuk token rotation, logout, revoke-all, dan fallback saat Redis tidak tersedia.
 
 ---
 

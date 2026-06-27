@@ -4,24 +4,32 @@ package auth_service
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
+	"strconv"
+	"time"
 
 	"investment_monitoring/config"
 	token_service "investment_monitoring/internal/module/support/token/service"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 	"investment_monitoring/pkg/utils"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type AuthService struct {
 	store    entity.Store
 	tokenSvc *token_service.TokenMaker
+	rdb      *redis.Client
 	cfg      *config.Config
 }
 
-func NewService(store entity.Store, tokenSvc *token_service.TokenMaker, cfg *config.Config) *AuthService {
+func NewService(store entity.Store, tokenSvc *token_service.TokenMaker, rdb *redis.Client, cfg *config.Config) *AuthService {
 	return &AuthService{
 		store:    store,
 		tokenSvc: tokenSvc,
+		rdb:      rdb,
 		cfg:      cfg,
 	}
 }
@@ -169,6 +177,9 @@ func (s *AuthService) RefreshToken(ctx context.Context, params RefreshTokenParam
 	if err != nil {
 		return RefreshTokenReturn{}, errs.NewUnauthorized("INVALID_REFRESH_TOKEN")
 	}
+	if err := s.ensureRefreshTokenActive(ctx, claims); err != nil {
+		return RefreshTokenReturn{}, err
+	}
 
 	// Verify user still exists
 	user, err := s.store.GetUserByID(ctx, claims.ID)
@@ -196,8 +207,118 @@ func (s *AuthService) RefreshToken(ctx context.Context, params RefreshTokenParam
 		return RefreshTokenReturn{}, errs.NewInternalServerError(err)
 	}
 
+	if s.rdb != nil {
+		if err := s.blacklistRefreshToken(ctx, claims); err != nil {
+			return RefreshTokenReturn{}, err
+		}
+	}
+
 	return RefreshTokenReturn{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+func (s *AuthService) Logout(ctx context.Context, params LogoutParams) (LogoutReturn, error) {
+	claims, err := s.tokenSvc.ValidateRefreshToken(params.RefreshToken)
+	if err != nil {
+		return LogoutReturn{}, errs.NewUnauthorized("INVALID_REFRESH_TOKEN")
+	}
+	if err := s.ensureRefreshTokenActive(ctx, claims); err != nil {
+		return LogoutReturn{}, err
+	}
+	if err := s.blacklistRefreshToken(ctx, claims); err != nil {
+		return LogoutReturn{}, err
+	}
+
+	return LogoutReturn{Message: "LOGOUT_SUCCESSFULLY"}, nil
+}
+
+func (s *AuthService) RevokeAll(ctx context.Context, params RevokeAllParams) (RevokeAllReturn, error) {
+	claims, err := s.tokenSvc.ValidateRefreshToken(params.RefreshToken)
+	if err != nil {
+		return RevokeAllReturn{}, errs.NewUnauthorized("INVALID_REFRESH_TOKEN")
+	}
+	if err := s.ensureRefreshTokenActive(ctx, claims); err != nil {
+		return RevokeAllReturn{}, err
+	}
+	if err := s.revokeAllRefreshTokens(ctx, claims.ID.String()); err != nil {
+		return RevokeAllReturn{}, err
+	}
+	if err := s.blacklistRefreshToken(ctx, claims); err != nil {
+		return RevokeAllReturn{}, err
+	}
+
+	return RevokeAllReturn{Message: "REFRESH_TOKENS_REVOKED_SUCCESSFULLY"}, nil
+}
+
+func (s *AuthService) ensureRefreshTokenActive(ctx context.Context, claims *token_service.RefreshTokenClaims) error {
+	if s.rdb == nil {
+		return nil
+	}
+
+	blacklisted, err := s.rdb.Exists(ctx, s.refreshBlacklistKey(claims.RegisteredClaims.ID)).Result()
+	if err != nil {
+		return errs.NewInternalServerError(err)
+	}
+	if blacklisted > 0 {
+		return errs.NewUnauthorized("REFRESH_TOKEN_REVOKED")
+	}
+
+	cutoffValue, err := s.rdb.Get(ctx, s.refreshUserRevokeAllKey(claims.ID.String())).Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return errs.NewInternalServerError(err)
+	}
+	if errors.Is(err, redis.Nil) {
+		return nil
+	}
+
+	cutoffUnixNano, err := strconv.ParseInt(cutoffValue, 10, 64)
+	if err != nil {
+		return errs.NewInternalServerError(err)
+	}
+	if claims.IssuedAt == nil || !claims.IssuedAt.Time.After(time.Unix(0, cutoffUnixNano)) {
+		return errs.NewUnauthorized("REFRESH_TOKEN_REVOKED")
+	}
+	return nil
+}
+
+func (s *AuthService) blacklistRefreshToken(ctx context.Context, claims *token_service.RefreshTokenClaims) error {
+	if s.rdb == nil {
+		return errs.NewInternalServerError(errors.New("redis is required for refresh token revocation"))
+	}
+	ttl := s.refreshTokenTTL(claims)
+	if ttl <= 0 {
+		return nil
+	}
+	if err := s.rdb.Set(ctx, s.refreshBlacklistKey(claims.RegisteredClaims.ID), claims.ID.String(), ttl).Err(); err != nil {
+		return errs.NewInternalServerError(err)
+	}
+	return nil
+}
+
+func (s *AuthService) revokeAllRefreshTokens(ctx context.Context, userID string) error {
+	if s.rdb == nil {
+		return errs.NewInternalServerError(errors.New("redis is required for refresh token revocation"))
+	}
+	key := s.refreshUserRevokeAllKey(userID)
+	if err := s.rdb.Set(ctx, key, time.Now().UnixNano(), s.cfg.JWT_REFRESH_TOKEN_EXPIRED).Err(); err != nil {
+		return errs.NewInternalServerError(err)
+	}
+	return nil
+}
+
+func (s *AuthService) refreshTokenTTL(claims *token_service.RefreshTokenClaims) time.Duration {
+	if claims.ExpiresAt == nil {
+		return 0
+	}
+	return time.Until(claims.ExpiresAt.Time)
+}
+
+func (s *AuthService) refreshBlacklistKey(jti string) string {
+	return fmt.Sprintf("%s:blacklist:refresh:%s", s.cfg.REDIS_PREFIX, jti)
+}
+
+func (s *AuthService) refreshUserRevokeAllKey(userID string) string {
+	return fmt.Sprintf("%s:revoke-all:refresh:%s", s.cfg.REDIS_PREFIX, userID)
 }

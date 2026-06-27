@@ -19,3 +19,11 @@ type SetPasswordParams struct {
 type RefreshTokenParams struct {
 	RefreshToken string `json:"refreshToken" validate:"required"`
 }
+
+type LogoutParams struct {
+	RefreshToken string `json:"refreshToken" validate:"required"`
+}
+
+type RevokeAllParams struct {
+	RefreshToken string `json:"refreshToken" validate:"required"`
+}

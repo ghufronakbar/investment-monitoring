@@ -52,3 +52,11 @@ type RefreshTokenReturn struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 }
+
+type LogoutReturn struct {
+	Message string `json:"message"`
+}
+
+type RevokeAllReturn struct {
+	Message string `json:"message"`
+}

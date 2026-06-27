@@ -128,9 +128,9 @@ Nilai IT:
 
 Catatan improvement:
 
-- Refresh token saat ini stateless JWT, belum disimpan atau direvoke di server.
-- Logout, token revoke, dan invitation token formal belum tampak lengkap di implementasi.
-- Redis bisa dijadikan token blacklist/session store jika ingin mengangkat topik secure session management.
+- Refresh token sudah memiliki `jti` dan bisa direvoke melalui Redis blacklist.
+- Logout dan revoke-all refresh token sudah tersedia sebagai baseline server-side revocation.
+- Sisa improvement IAM adalah session/device list, audit login, dan invitation token formal.
 
 ### 3.2 Project dan Contract Assignment
 
@@ -257,21 +257,18 @@ Cara menulis di jurnal:
 
 > Sistem menyediakan near-real-time visibility melalui API dashboard dan data agregat. Untuk mencapai real-time monitoring penuh, sistem dapat ditingkatkan dengan event-driven notification dan streaming update.
 
-### 4.2 Redis Ada, Tetapi Belum Digunakan
+### 4.2 Redis Sudah Mulai Digunakan
 
-Redis dependency dan config ada, tetapi tidak digunakan oleh service aktif. Koneksi Redis juga sudah dinonaktifkan sementara agar server bisa run tanpa Redis lokal.
+Redis dependency dan config sekarang digunakan untuk refresh token revocation. Koneksi Redis dibuat optional agar server tetap bisa run tanpa Redis lokal; jika Redis tersedia, logout dan revoke-all refresh token aktif.
 
 Pilihan improvement:
 
-- Hapus Redis jika tidak dipakai agar arsitektur lebih sederhana.
-- Atau gunakan Redis secara jelas untuk:
-  - cache dashboard S-Curve;
-  - rate limiting login;
-  - refresh token blacklist;
-  - notification queue;
-  - distributed lock untuk finance request.
+- cache dashboard S-Curve;
+- rate limiting login;
+- notification queue;
+- distributed lock untuk finance request jika nanti perlu lock lintas proses.
 
-Untuk jurnal IT, opsi kedua lebih menarik karena menunjukkan peningkatan scalability dan security.
+Untuk jurnal IT, Redis sekarang bisa dibahas sebagai komponen security untuk token revocation, lalu diperluas ke cache/rate limiting sebagai roadmap scalability.
 
 ### 4.3 Beberapa Endpoint Belum Lengkap
 
@@ -279,7 +276,7 @@ Contoh:
 
 - Monitoring detail task masih `NOT_IMPLEMENTED`.
 - Monitoring detail progress log masih `NOT_IMPLEMENTED`.
-- Route docs menyebut beberapa endpoint invitation/logout yang belum tampak di controller.
+- Route docs perlu disinkronkan ulang dengan endpoint auth terbaru seperti logout dan revoke-all.
 - Ada perbedaan nama route di docs dan kode, misalnya beberapa docs memakai plural `tasks`, sementara kode memakai `task`.
 
 Improvement:
@@ -340,12 +337,12 @@ Rekomendasi:
 
 2. Refresh Token Revocation
 
-   Saat ini refresh token bersifat stateless. Tambahkan token id (`jti`) dan simpan allowlist/denylist.
+   Baseline sudah dibuat dengan token id (`jti`) dan Redis blacklist dengan TTL. `revoke-all` memakai cutoff timestamp per user.
 
-   Pilihan storage:
+   Sisa peningkatan:
 
-   - PostgreSQL untuk audit permanen.
-   - Redis untuk blacklist cepat dengan TTL.
+   - PostgreSQL untuk audit permanen jika ingin session history.
+   - UI/session list untuk revoke device tertentu.
 
 3. Rate Limiting Login
 

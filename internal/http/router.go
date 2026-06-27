@@ -61,7 +61,7 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	subexampleSvc := subexample_service.NewService(db)
 
 	// IAM services
-	authSvc := auth_service.NewService(db, tokenSvc, cfg)
+	authSvc := auth_service.NewService(db, tokenSvc, rdb, cfg)
 	orgSvc := organization_service.NewService(db, mailSvc, cfg)
 	profileSvc := profile_service.NewService(db, cfg)
 

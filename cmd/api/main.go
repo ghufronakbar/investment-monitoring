@@ -33,12 +33,12 @@ func main() {
 	defer db.Close()
 	store := repository.NewStore(db)
 
-	// Redis is currently not used by any service/handler.
-	// Keep this disabled so the API can run without a local Redis instance.
-	// rdb, err := config.ConnectRedis(cfg)
-	// if err != nil {
-	// 	panic("Cannot connect to Redis" + err.Error())
-	// }
+	rdb, err := config.ConnectRedis(cfg)
+	if err != nil {
+		log.Println("Redis unavailable, refresh token revocation is disabled:", err)
+	} else {
+		defer rdb.Close()
+	}
 
 	// HTTP router root
 	r := chi.NewRouter()
@@ -61,7 +61,7 @@ func main() {
 	r.Use(chiMw.StripSlashes)
 	r.Use(chiMw.Recoverer)
 
-	r.Mount("/api", handler.NewRouter(store, nil, cfg))
+	r.Mount("/api", handler.NewRouter(store, rdb, cfg))
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.PORT,

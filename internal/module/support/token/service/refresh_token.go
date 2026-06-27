@@ -22,11 +22,14 @@ type GenerateRefreshTokenInput struct {
 
 func (tm *TokenMaker) GenerateRefreshToken(input GenerateRefreshTokenInput) (string, error) {
 	expirationTime := time.Now().Add(tm.refreshTTL)
+	tokenID := uuid.NewString()
 	claims := &RefreshTokenClaims{
 		ID:    input.ID,
 		Email: input.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        tokenID,
 		},
 	}
 
@@ -34,8 +37,8 @@ func (tm *TokenMaker) GenerateRefreshToken(input GenerateRefreshTokenInput) (str
 	return token.SignedString(tm.refreshSecret)
 }
 
-func (tm *TokenMaker) ValidateRefreshToken(tokenString string) (*AccessTokenClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &AccessTokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+func (tm *TokenMaker) ValidateRefreshToken(tokenString string) (*RefreshTokenClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &RefreshTokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return tm.refreshSecret, nil
 	})
 	if err != nil {
@@ -44,7 +47,11 @@ func (tm *TokenMaker) ValidateRefreshToken(tokenString string) (*AccessTokenClai
 	if !token.Valid {
 		return nil, errs.NewBadRequest("INVALID_REFRESH_TOKEN")
 	}
-	return token.Claims.(*AccessTokenClaims), nil
+	claims := token.Claims.(*RefreshTokenClaims)
+	if claims.RegisteredClaims.ID == "" || claims.IssuedAt == nil || claims.ExpiresAt == nil {
+		return nil, errs.NewBadRequest("INVALID_REFRESH_TOKEN_CLAIMS")
+	}
+	return claims, nil
 }
 
 func (tm *TokenMaker) RefreshDecodeTokenWithoutVerify(tokenString string) (*RefreshTokenClaims, error) {
