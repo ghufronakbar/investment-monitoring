@@ -259,15 +259,14 @@ Cara menulis di jurnal:
 
 ### 4.2 Redis Sudah Mulai Digunakan
 
-Redis dependency dan config sekarang digunakan untuk refresh token revocation dan rate limiting auth endpoint. Koneksi Redis dibuat optional agar server tetap bisa run tanpa Redis lokal; jika Redis tersedia, logout, revoke-all refresh token, dan rate limit counter memakai Redis.
+Redis dependency dan config sekarang digunakan untuk refresh token revocation, rate limiting auth endpoint, dan dashboard cache. Koneksi Redis dibuat optional agar server tetap bisa run tanpa Redis lokal; jika Redis tersedia, logout, revoke-all refresh token, rate limit counter, dan cache dashboard memakai Redis.
 
 Pilihan improvement:
 
-- cache dashboard S-Curve;
 - notification queue;
 - distributed lock untuk finance request jika nanti perlu lock lintas proses.
 
-Untuk jurnal IT, Redis sekarang bisa dibahas sebagai komponen security untuk token revocation dan brute-force mitigation, lalu diperluas ke cache sebagai roadmap scalability.
+Untuk jurnal IT, Redis sekarang bisa dibahas sebagai komponen security untuk token revocation/brute-force mitigation dan performance optimization untuk dashboard.
 
 ### 4.3 Beberapa Endpoint Belum Lengkap
 
@@ -476,11 +475,12 @@ Rekomendasi:
 
 1. S-Curve Cache
 
-   Dashboard S-Curve bisa dihitung berat jika data bertambah. Gunakan Redis cache:
+   Dashboard S-Curve dan stats sudah memakai Redis read-through cache:
 
-   - key: `scurve:{projectId}`
-   - TTL: 1 sampai 5 menit
-   - invalidasi saat progress validation baru dibuat.
+   - key: `{REDIS_PREFIX}:dashboard:scurve:{projectId}`
+   - key: `{REDIS_PREFIX}:dashboard:stats:{projectId}`
+   - TTL: 3 menit
+   - invalidasi saat progress validation, ticket status, payment disburse, WBS, atau project settings berubah.
 
 2. Materialized View
 

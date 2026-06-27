@@ -8,26 +8,36 @@ import (
 	"time"
 
 	"investment_monitoring/config"
+	dashboard_cache "investment_monitoring/internal/module/support/dashboard/cache"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type DashboardService struct {
 	store *entity.SQLStore
+	cache *dashboard_cache.Cache
 	cfg   *config.Config
 }
 
-func NewService(store *entity.SQLStore, cfg *config.Config) *DashboardService {
+func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *DashboardService {
 	return &DashboardService{
 		store: store,
+		cache: dashboard_cache.New(rdb, cfg),
 		cfg:   cfg,
 	}
 }
 
 // GetSCurve calculates S-Curve data points weekly from start_date to baseline_deadline
 func (s *DashboardService) GetSCurve(ctx context.Context, params GetSCurveParams) (*SCurveReturn, error) {
+	cacheKey := s.cache.SCurveKey(params.ProjectID)
+	var cached SCurveReturn
+	if ok, err := s.cache.Get(ctx, cacheKey, &cached); err == nil && ok {
+		return &cached, nil
+	}
+
 	// Get project settings
 	settings, err := s.store.GetProjectSettingsForDashboard(ctx, params.ProjectID)
 	if err == sql.ErrNoRows {
@@ -65,16 +75,25 @@ func (s *DashboardService) GetSCurve(ctx context.Context, params GetSCurveParams
 		totalWeight,
 	)
 
-	return &SCurveReturn{
+	result := &SCurveReturn{
 		ProjectName:      settings.ProjectName,
 		StartDate:        settings.StartDate,
 		BaselineDeadline: settings.BaselineDeadline,
 		DataPoints:       dataPoints,
-	}, nil
+	}
+
+	_ = s.cache.Set(ctx, cacheKey, result)
+	return result, nil
 }
 
 // GetStats returns dashboard statistics
 func (s *DashboardService) GetStats(ctx context.Context, params GetStatsParams) (*StatsReturn, error) {
+	cacheKey := s.cache.StatsKey(params.ProjectID)
+	var cached StatsReturn
+	if ok, err := s.cache.Get(ctx, cacheKey, &cached); err == nil && ok {
+		return &cached, nil
+	}
+
 	// Get project settings
 	settings, err := s.store.GetProjectSettingsForDashboard(ctx, params.ProjectID)
 	if err == sql.ErrNoRows {
@@ -99,7 +118,7 @@ func (s *DashboardService) GetStats(ctx context.Context, params GetStatsParams) 
 	// Calculate current physical progress
 	physicalProgress := s.calculateCurrentProgress(ctx, params.ProjectID)
 
-	return &StatsReturn{
+	result := &StatsReturn{
 		ProjectName:      settings.ProjectName,
 		TotalBudget:      strconv.FormatInt(settings.TotalBudget, 10),
 		DisbursedAmount:  strconv.FormatInt(disbursed, 10),
@@ -112,7 +131,10 @@ func (s *DashboardService) GetStats(ctx context.Context, params GetStatsParams) 
 			Closed:     ticketStats.ClosedCount,
 			Total:      ticketStats.TotalCount,
 		},
-	}, nil
+	}
+
+	_ = s.cache.Set(ctx, cacheKey, result)
+	return result, nil
 }
 
 // ===== HELPER FUNCTIONS =====

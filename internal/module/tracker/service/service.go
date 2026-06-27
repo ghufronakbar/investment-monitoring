@@ -9,25 +9,29 @@ import (
 
 	"investment_monitoring/config"
 	"investment_monitoring/internal/audit"
+	dashboard_cache "investment_monitoring/internal/module/support/dashboard/cache"
 	sla_service "investment_monitoring/internal/module/support/sla/service"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type TrackerService struct {
 	store *entity.SQLStore
 	audit *audit.Service
+	cache *dashboard_cache.Cache
 	sla   *sla_service.Service
 	cfg   *config.Config
 }
 
-func NewService(store *entity.SQLStore, cfg *config.Config) *TrackerService {
+func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *TrackerService {
 	return &TrackerService{
 		store: store,
 		audit: audit.NewService(store),
+		cache: dashboard_cache.New(rdb, cfg),
 		sla:   sla_service.NewService(store),
 		cfg:   cfg,
 	}
@@ -130,6 +134,7 @@ func (s *TrackerService) CreateTicket(ctx context.Context, params CreateTicketPa
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
 	}
+	_ = s.cache.InvalidateProject(ctx, contract.ProjectID)
 
 	// Get creator org name
 	creatorOrg, _ := s.store.GetOrganizationByID(ctx, params.ContractorID)
@@ -454,6 +459,7 @@ func (s *TrackerService) AssignTicket(ctx context.Context, params AssignTicketPa
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
 	}
+	_ = s.invalidateDashboardByContractID(ctx, ticket.ContractID)
 
 	// Return updated ticket
 	return s.GetTicketByID(ctx, GetTicketByIDParams{TicketID: params.TicketID})
@@ -583,6 +589,7 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
 	}
+	_ = s.invalidateDashboardByTicketID(ctx, params.TicketID)
 
 	// Get org and user names
 	org, _ := s.store.GetOrganizationByID(ctx, params.OrgID)
@@ -669,9 +676,26 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 	if err != nil {
 		return TicketReturn{}, errs.NewInternalServerError(err)
 	}
+	_ = s.invalidateDashboardByTicketID(ctx, params.TicketID)
 
 	// Return updated ticket
 	return s.GetTicketByID(ctx, GetTicketByIDParams{TicketID: params.TicketID})
+}
+
+func (s *TrackerService) invalidateDashboardByTicketID(ctx context.Context, ticketID uuid.UUID) error {
+	ticket, err := s.store.GetTicketWithContract(ctx, ticketID)
+	if err != nil {
+		return err
+	}
+	return s.invalidateDashboardByContractID(ctx, ticket.ContractID)
+}
+
+func (s *TrackerService) invalidateDashboardByContractID(ctx context.Context, contractID uuid.UUID) error {
+	contract, err := s.store.GetContractByID(ctx, contractID)
+	if err != nil {
+		return err
+	}
+	return s.cache.InvalidateProject(ctx, contract.ProjectID)
 }
 
 func (s *TrackerService) attachTicketSLA(ctx context.Context, ticket *TicketReturn) error {

@@ -497,37 +497,56 @@ internal/http/internal_middleware/rate_limit_test.go
 
 ## 8. Dashboard Cache
 
-### Status Saat Ini
+### Status Implementasi
 
-Dashboard S-Curve dan stats dihitung langsung dari database setiap request. Ini masih cukup untuk data kecil, tetapi bisa berat jika data progress/ticket semakin banyak.
+Dashboard S-Curve dan stats sekarang memakai Redis read-through cache. Jika Redis tidak tersedia, service otomatis menghitung dari database seperti sebelumnya.
 
-### Yang Perlu Dibuat
+### Yang Sudah Dibuat
 
-Gunakan Redis cache:
-
-```text
-dashboard:scurve:{projectId}
-dashboard:stats:{projectId}
-```
-
-TTL awal:
+Package cache:
 
 ```text
-1-5 menit
+internal/module/support/dashboard/cache
 ```
 
-Invalidasi cache saat:
+Cache key:
+
+```text
+{REDIS_PREFIX}:dashboard:scurve:{projectId}
+{REDIS_PREFIX}:dashboard:stats:{projectId}
+```
+
+TTL:
+
+```text
+3 menit
+```
+
+Integrasi:
+
+- `DashboardService.GetSCurve` membaca cache dulu, lalu fallback ke query database jika cache miss.
+- `DashboardService.GetStats` membaca cache dulu, lalu fallback ke query database jika cache miss.
+- Cache write dilakukan best-effort. Error Redis tidak menggagalkan response dashboard.
+
+Invalidasi cache sudah dipasang pada:
 
 - progress divalidasi;
 - ticket status berubah;
 - payment disburse;
 - WBS diubah.
+- project settings diubah.
 
 ### Manfaat
 
 - Dashboard lebih cepat.
 - Redis punya fungsi yang nyata.
 - Mendukung klaim scalability.
+
+### Sisa Peningkatan
+
+- Tambahkan cache hit/miss metric.
+- Tambahkan konfigurasi TTL via env.
+- Tambahkan invalidasi berbasis domain event/outbox agar invalidasi tidak tersebar di banyak service.
 
 ---
 

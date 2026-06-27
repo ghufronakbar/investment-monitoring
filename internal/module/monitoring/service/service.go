@@ -8,24 +8,28 @@ import (
 
 	"investment_monitoring/config"
 	"investment_monitoring/internal/audit"
+	dashboard_cache "investment_monitoring/internal/module/support/dashboard/cache"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 )
 
 type MonitoringService struct {
 	store *entity.SQLStore
 	audit *audit.Service
+	cache *dashboard_cache.Cache
 	cfg   *config.Config
 }
 
-func NewService(store *entity.SQLStore, cfg *config.Config) *MonitoringService {
+func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *MonitoringService {
 	return &MonitoringService{
 		store: store,
 		audit: audit.NewService(store),
+		cache: dashboard_cache.New(rdb, cfg),
 		cfg:   cfg,
 	}
 }
@@ -76,6 +80,7 @@ func (s *MonitoringService) CreateTask(ctx context.Context, params CreateTaskPar
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
 	}
+	_ = s.cache.InvalidateProject(ctx, contract.ProjectID)
 
 	result = TaskReturn{
 		ID:          task.ID,
@@ -309,6 +314,7 @@ func (s *MonitoringService) UpdateTask(ctx context.Context, params UpdateTaskPar
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
 	}
+	_ = s.invalidateDashboardByContractID(ctx, existing.ContractID)
 
 	// Check if leaf
 	children, _ := s.store.GetChildTasks(ctx, uuid.NullUUID{UUID: task.ID, Valid: true})
@@ -333,7 +339,7 @@ func (s *MonitoringService) UpdateTask(ctx context.Context, params UpdateTaskPar
 // DeleteTask soft deletes a task
 func (s *MonitoringService) DeleteTask(ctx context.Context, params DeleteTaskParams) error {
 	// Check if task exists
-	_, err := s.store.GetTaskByID(ctx, params.TaskID)
+	task, err := s.store.GetTaskByID(ctx, params.TaskID)
 	if err == sql.ErrNoRows {
 		return errs.NewNotFound("TASK_NOT_FOUND")
 	}
@@ -354,6 +360,7 @@ func (s *MonitoringService) DeleteTask(ctx context.Context, params DeleteTaskPar
 	if err != nil {
 		return errs.NewInternalServerError(err)
 	}
+	_ = s.invalidateDashboardByContractID(ctx, task.ContractID)
 
 	return nil
 }
@@ -625,6 +632,7 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 	if err != nil {
 		return result, errs.NewInternalServerError(err)
 	}
+	_ = s.invalidateDashboardByTaskID(ctx, log.TaskItemID)
 
 	result = ValidationReturn{
 		ID:                     validation.ID,
@@ -639,6 +647,22 @@ func (s *MonitoringService) ValidateProgress(ctx context.Context, params Validat
 	}
 
 	return result, nil
+}
+
+func (s *MonitoringService) invalidateDashboardByTaskID(ctx context.Context, taskID uuid.UUID) error {
+	task, err := s.store.GetTaskByID(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	return s.invalidateDashboardByContractID(ctx, task.ContractID)
+}
+
+func (s *MonitoringService) invalidateDashboardByContractID(ctx context.Context, contractID uuid.UUID) error {
+	contract, err := s.store.GetContractByID(ctx, contractID)
+	if err != nil {
+		return err
+	}
+	return s.cache.InvalidateProject(ctx, contract.ProjectID)
 }
 
 // ===== S-CURVE =====

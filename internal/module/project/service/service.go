@@ -7,23 +7,27 @@ import (
 
 	"investment_monitoring/config"
 	"investment_monitoring/internal/audit"
+	dashboard_cache "investment_monitoring/internal/module/support/dashboard/cache"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 )
 
 type ProjectService struct {
 	store *entity.SQLStore
 	audit *audit.Service
+	cache *dashboard_cache.Cache
 	cfg   *config.Config
 }
 
-func NewService(store *entity.SQLStore, cfg *config.Config) *ProjectService {
+func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *ProjectService {
 	return &ProjectService{
 		store: store,
 		audit: audit.NewService(store),
+		cache: dashboard_cache.New(rdb, cfg),
 		cfg:   cfg,
 	}
 }
@@ -354,6 +358,7 @@ func (s *ProjectService) ConfigureSettings(ctx context.Context, params Configure
 	if err != nil {
 		return ProjectSettingsReturn{}, errs.NewInternalServerError(err)
 	}
+	_ = s.cache.InvalidateProject(ctx, params.ProjectID)
 
 	return ProjectSettingsReturn{
 		ID:               settings.ID,
@@ -414,6 +419,7 @@ func (s *ProjectService) AssignExecutingAgency(ctx context.Context, params Assig
 	if err != nil {
 		return AssignmentReturn{}, errs.NewInternalServerError(err)
 	}
+	_ = s.cache.InvalidateProject(ctx, params.ProjectID)
 
 	return AssignmentReturn{
 		Success: true,
@@ -491,6 +497,7 @@ func (s *ProjectService) AssignVendor(ctx context.Context, params AssignVendorPa
 	if err != nil {
 		return AssignmentReturn{}, errs.NewInternalServerError(err)
 	}
+	_ = s.cache.InvalidateProject(ctx, params.ProjectID)
 
 	return AssignmentReturn{
 		Success: true,

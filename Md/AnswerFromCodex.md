@@ -522,7 +522,7 @@ Yang belum kuat:
 
 - formal FSM engine reusable sudah dibuat di `internal/workflow`;
 - SLA tracking ticket sudah ada sebagai baseline, tetapi belum punya dashboard bottleneck, konfigurasi per state, dan escalation worker;
-- Redis sudah mulai digunakan untuk refresh token revocation dan rate limiting auth, tetapi belum untuk cache/dashboard;
+- Redis sudah mulai digunakan untuk refresh token revocation, rate limiting auth, dan dashboard cache;
 - real-time belum benar-benar real-time;
 - audit log global sudah ada sebagai baseline, tetapi belum punya endpoint pembacaan, policy akses audit, dan redaction field sensitif;
 - automated test belum ada;

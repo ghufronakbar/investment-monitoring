@@ -67,22 +67,22 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) c
 	profileSvc := profile_service.NewService(db, cfg)
 
 	// Project services
-	projectSvc := project_service.NewService(db, cfg)
+	projectSvc := project_service.NewService(db, rdb, cfg)
 
 	// Monitoring services
-	monitoringSvc := monitoring_service.NewService(db, cfg)
+	monitoringSvc := monitoring_service.NewService(db, rdb, cfg)
 
 	// Tracker services
-	trackerSvc := tracker_service.NewService(db, cfg)
+	trackerSvc := tracker_service.NewService(db, rdb, cfg)
 
 	// Finance services
-	financeSvc := finance_service.NewService(db, cfg)
+	financeSvc := finance_service.NewService(db, rdb, cfg)
 
 	// Uploader service
 	uploaderSvc, _ := uploader_service.NewService(cfg)
 
 	// Dashboard service
-	dashboardSvc := dashboard_service.NewService(db, cfg)
+	dashboardSvc := dashboard_service.NewService(db, rdb, cfg)
 
 	// 2. =========== INITIAL HANDLER ===========
 	subexampleHandler := subexample_controller.NewHandler(subexampleSvc)

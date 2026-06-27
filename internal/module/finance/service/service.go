@@ -8,23 +8,27 @@ import (
 
 	"investment_monitoring/config"
 	"investment_monitoring/internal/audit"
+	dashboard_cache "investment_monitoring/internal/module/support/dashboard/cache"
 	"investment_monitoring/internal/repository/entity"
 	"investment_monitoring/internal/workflow"
 	"investment_monitoring/pkg/errs"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type FinanceService struct {
 	store *entity.SQLStore
 	audit *audit.Service
+	cache *dashboard_cache.Cache
 	cfg   *config.Config
 }
 
-func NewService(store *entity.SQLStore, cfg *config.Config) *FinanceService {
+func NewService(store *entity.SQLStore, rdb *redis.Client, cfg *config.Config) *FinanceService {
 	return &FinanceService{
 		store: store,
 		audit: audit.NewService(store),
+		cache: dashboard_cache.New(rdb, cfg),
 		cfg:   cfg,
 	}
 }
@@ -442,6 +446,7 @@ func (s *FinanceService) Disburse(ctx context.Context, params DisburseParams) (P
 	if err != nil {
 		return PaymentRequestReturn{}, errs.NewInternalServerError(err)
 	}
+	_ = s.cache.InvalidateProject(ctx, prWithContract.ProjectID)
 
 	// Return updated request
 	return s.GetPaymentRequestByID(ctx, GetPaymentRequestByIDParams{RequestID: params.RequestID})
