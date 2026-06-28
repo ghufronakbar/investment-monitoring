@@ -2,7 +2,7 @@
 
 Dokumen ini menyusun outline jurnal dari sudut pandang Informatika berdasarkan dokumen awal `AdviceFromGemini.md`, tanggapan `AnswerFromCodex.md`, dan improvement backend/frontend yang sudah dikerjakan pada project JICA Investment Monitoring System.
 
-Fokus tulisan disarankan tidak hanya menjadi "dashboard monitoring proyek", tetapi diarahkan menjadi pembahasan sistem informasi workflow governance lintas lembaga. Dengan begitu, bagian IT memiliki novelty yang jelas: pemodelan proses bisnis stateful, kontrol akses multi-organisasi, integrity validation, auditability, event-driven realtime delivery, dan evaluasi teknis.
+Fokus tulisan disarankan tidak hanya menjadi "dashboard monitoring proyek", tetapi diarahkan menjadi pembahasan sistem informasi workflow governance lintas lembaga dengan studi kasus proyek infrastruktur transnasional berbasis ODA, seperti MRT Jakarta Fase 2A. Dengan begitu, bagian IT memiliki novelty yang jelas: pemodelan proses bisnis stateful, kontrol akses multi-organisasi, integrity validation, auditability, event-driven realtime delivery, dan evaluasi teknis.
 
 ---
 
@@ -12,7 +12,7 @@ Fokus tulisan disarankan tidak hanya menjadi "dashboard monitoring proyek", teta
 
 Niche yang paling kuat:
 
-> Perancangan dan implementasi backend workflow governance proyek infrastruktur multi-stakeholder berbasis Finite State Machine, SLA Tracking, Organization-Centric Access Control, Audit Trail, dan Realtime Event Delivery.
+> Perancangan dan implementasi backend workflow governance proyek infrastruktur transnasional berbasis ODA menggunakan Finite State Machine, SLA Tracking, Organization-Centric Access Control, Audit Trail, dan Realtime Event Delivery.
 
 Alasan niche ini kuat:
 
@@ -20,7 +20,7 @@ Alasan niche ini kuat:
 - domain proyek infrastruktur memiliki banyak state, approval, validasi, dan bottleneck;
 - sistem sudah memiliki implementasi nyata pada backend, bukan hanya desain konseptual;
 - improvement yang sudah dibuat dapat dibahas sebagai kontribusi rekayasa perangkat lunak;
-- konteks HI tetap bisa menjadi latar belakang, tetapi novelty tulisan berada pada model sistem informasinya.
+- konteks HI tetap bisa menjadi latar belakang dan studi kasus, tetapi novelty tulisan berada pada model sistem informasinya.
 
 ### 1.2 Pembeda dengan Jurnal Hubungan Internasional
 
@@ -40,24 +40,39 @@ Jurnal Informatika sebaiknya membahas:
 - bagaimana domain event dan WebSocket membuat dashboard lebih responsif;
 - bagaimana pengujian backend membuktikan aturan workflow berjalan benar.
 
+### 1.2.1 Titik Temu dengan Jurnal Hubungan Internasional
+
+Jurnal HI dapat diposisikan sebagai penjelasan kebutuhan bisnis dan kebijakan: mengapa proyek transnasional seperti MRT Jakarta Fase 2A membutuhkan transparansi, trust-building, dan mitigasi red tape. Jurnal Informatika kemudian menjawab sisi teknis: bagaimana kebutuhan tersebut dapat diwujudkan melalui rancangan backend yang formal, aman, dan dapat diuji.
+
+Korelasi yang bisa ditulis:
+
+- red tape dan saling tunggu dijawab dengan FSM Transition Engine dan SLA Tracking;
+- asimetri informasi dijawab dengan outbox pattern dan WebSocket realtime delivery;
+- international trust dijawab dengan audit trail, policy layer, dan akses berbasis organisasi;
+- risiko miskomunikasi lintas institusi dijawab dengan topic authorization, role boundary, dan workflow contract yang eksplisit.
+
+Catatan klaim:
+
+> Sistem ini diposisikan sebagai prototipe berbasis studi kasus, bukan sistem resmi yang telah terintegrasi dengan MRT Jakarta, Pemprov DKI, JICA, atau kontraktor terkait.
+
 ### 1.3 Usulan Judul
 
 Judul utama yang direkomendasikan:
 
-> Perancangan Backend Workflow Governance Proyek Infrastruktur Multi-Stakeholder Menggunakan Finite State Machine, SLA Tracking, dan Realtime Event Delivery
+> Perancangan Backend Workflow Governance Proyek Infrastruktur Transnasional Berbasis ODA Menggunakan Finite State Machine, SLA Tracking, dan Realtime Event Delivery: Studi Kasus MRT Jakarta Fase 2A
 
 Alternatif:
 
-1. Model Sistem Informasi Monitoring Proyek Infrastruktur Lintas Lembaga Berbasis FSM, SLA Tracking, dan Organization-Centric RBAC
-2. Implementasi Workflow Governance Anti-Red Tape pada Monitoring Proyek Infrastruktur Menggunakan Finite State Machine dan Audit Trail
+1. Model Sistem Informasi Monitoring Proyek Infrastruktur Transnasional Berbasis FSM, SLA Tracking, dan Organization-Centric RBAC
+2. Implementasi Workflow Governance Anti-Red Tape pada Monitoring Proyek Infrastruktur ODA Menggunakan Finite State Machine dan Audit Trail
 3. Arsitektur Backend untuk Transparansi Proyek Infrastruktur Multi-Stakeholder Berbasis Policy Layer, Outbox Pattern, dan WebSocket Realtime Delivery
-4. Perancangan Sistem Monitoring Digital Proyek Infrastruktur Berbasis Workflow Engine, SLA Tracking, dan Event-Driven Architecture
+4. Perancangan Sistem Monitoring Digital Proyek MRT Berbasis Workflow Engine, SLA Tracking, dan Event-Driven Architecture
 
 ---
 
 ## 2. Abstrak yang Disarankan
 
-Proyek infrastruktur berskala besar melibatkan banyak pemangku kepentingan, seperti pemerintah, penyedia pendanaan, pelaksana proyek, kontraktor, auditor independen, dan instansi pendukung. Kompleksitas koordinasi tersebut berisiko menimbulkan red tape, asimetri informasi, keterlambatan validasi, dan lemahnya akuntabilitas proses. Penelitian ini merancang dan mengimplementasikan prototipe backend sistem monitoring proyek infrastruktur multi-stakeholder dengan pendekatan Finite State Machine, SLA Tracking, Organization-Centric Access Control, audit trail, dan event-driven realtime delivery. Sistem dikembangkan sebagai modular monolith menggunakan Go, PostgreSQL, Redis, JWT, WebSocket, dan outbox pattern. Workflow utama yang dimodelkan mencakup validasi progress, ticket penyelesaian hambatan, approval pembayaran, validasi integritas WBS, serta pengiriman event realtime ke dashboard. Hasil pengujian menunjukkan bahwa sistem mampu menolak transisi status tidak valid, membatasi akses berdasarkan organisasi dan role, mencatat aktivitas penting ke audit log, memvalidasi struktur WBS, mengendalikan concurrency pada pembayaran, serta mengirim sinyal pembaruan realtime tanpa menjadikan WebSocket sebagai sumber data utama. Penelitian ini menunjukkan bahwa model backend workflow governance dapat meningkatkan transparansi, traceability, dan kesiapan integrasi digital pada monitoring proyek infrastruktur lintas lembaga.
+Proyek infrastruktur transnasional berbasis ODA seperti MRT Jakarta Fase 2A melibatkan banyak pemangku kepentingan, seperti pemerintah lokal, executing agency, penyedia pendanaan asing, kontraktor, auditor independen, dan instansi pendukung. Kompleksitas koordinasi tersebut berisiko menimbulkan red tape, asimetri informasi, keterlambatan validasi, dan lemahnya akuntabilitas proses. Penelitian ini merancang dan mengimplementasikan prototipe backend sistem monitoring proyek infrastruktur multi-stakeholder dengan pendekatan Finite State Machine, SLA Tracking, Organization-Centric Access Control, audit trail, dan event-driven realtime delivery. Sistem dikembangkan sebagai modular monolith menggunakan Go, PostgreSQL, SQLC, Redis, JWT, WebSocket, dan outbox pattern. Workflow utama yang dimodelkan mencakup validasi progress, ticket penyelesaian hambatan, approval pembayaran, validasi integritas WBS, serta pengiriman event realtime ke dashboard. Hasil pengujian menunjukkan bahwa sistem mampu menolak transisi status tidak valid, membatasi akses berdasarkan organisasi dan role, mencatat aktivitas penting ke audit log, memvalidasi struktur WBS, mengendalikan concurrency pada pembayaran, serta mengirim sinyal pembaruan realtime tanpa menjadikan WebSocket sebagai sumber data utama. Penelitian ini menunjukkan bahwa model backend workflow governance dapat meningkatkan transparansi, traceability, dan kesiapan integrasi digital pada monitoring proyek infrastruktur lintas lembaga.
 
 Kata kunci:
 
@@ -78,12 +93,14 @@ Kata kunci:
 
 ### 1.1 Latar Belakang
 
-Bahas konteks proyek infrastruktur besar seperti MRT Jakarta Fase 2A sebagai contoh domain yang melibatkan koordinasi lintas lembaga. Dalam konteks Informatika, masalah utama bukan diplomasi itu sendiri, tetapi kompleksitas aliran data, validasi, approval, dan transparansi status antar organisasi.
+Bahas konteks proyek infrastruktur besar seperti MRT Jakarta Fase 2A sebagai contoh domain yang melibatkan koordinasi lintas lembaga dan lintas negara. Dalam konteks Informatika, masalah utama bukan diplomasi itu sendiri, tetapi kompleksitas aliran data, validasi, approval, dan transparansi status antar organisasi.
 
 Poin yang dapat ditulis:
 
 - proyek infrastruktur memiliki banyak aktor dengan kewenangan berbeda;
+- proyek berbasis ODA memiliki kebutuhan pelaporan yang tidak hanya lokal, tetapi juga berkaitan dengan pemberi dana asing;
 - proses manual berbasis rapat, dokumen, atau komunikasi informal rentan menimbulkan keterlambatan;
+- kasus seperti koordinasi pekerjaan sipil, integrasi sistem, pemindahan utilitas, dan paket kontrak seperti CP205 dapat dipakai sebagai latar domain;
 - status pekerjaan sering tidak cukup hanya "sedang berjalan", karena perlu diketahui siapa pemegang tanggung jawab, sejak kapan status aktif, dan apakah sudah melewati SLA;
 - sistem informasi dibutuhkan untuk mengubah proses birokrasi menjadi workflow digital yang terukur dan dapat diaudit.
 
@@ -102,7 +119,7 @@ Rumusan masalah teknis:
 
 Tujuan penelitian:
 
-- merancang model backend workflow governance untuk proyek multi-stakeholder;
+- merancang model backend workflow governance untuk proyek multi-stakeholder dengan studi kasus proyek infrastruktur transnasional;
 - menerapkan FSM pada workflow monitoring, tracker, dan finance;
 - menerapkan Organization-Centric Access Control untuk menjaga boundary antar lembaga;
 - menerapkan SLA Tracking untuk mendeteksi bottleneck proses;
@@ -115,6 +132,7 @@ Batasan yang disarankan:
 
 - sistem berupa prototipe backend dan frontend pendukung, bukan sistem produksi resmi MRT/JICA;
 - data proyek digunakan sebagai konteks studi kasus, bukan klaim integrasi langsung dengan sistem pemerintah/JICA;
+- MRT Jakarta Fase 2A dan ODA Loan Jepang dipakai sebagai konteks kebutuhan, sedangkan implementasi sistem tetap bersifat prototipe akademik;
 - integrasi eksternal seperti API Gateway antar instansi belum menjadi fokus implementasi;
 - WebSocket digunakan sebagai sinyal invalidasi/refetch, sedangkan REST tetap menjadi source of truth;
 - Redis bersifat optional dan sistem tetap berjalan dengan graceful degradation ketika Redis tidak tersedia.
@@ -297,14 +315,14 @@ Metode yang cocok:
 
 Tahapan:
 
-1. analisis kebutuhan domain multi-stakeholder;
+1. analisis kebutuhan domain multi-stakeholder pada studi kasus proyek infrastruktur transnasional;
 2. perancangan model workflow;
 3. implementasi backend modular monolith;
 4. integrasi frontend untuk validasi contract;
 5. pengujian unit, service, policy, workflow, dan controller contract;
 6. analisis hasil berdasarkan correctness, access control, auditability, dan realtime readiness.
 
-### 3.2 Analisis Aktor Sistem
+### 3.2 Analisis Aktor Lintas Institusi
 
 Aktor domain:
 
@@ -315,12 +333,22 @@ Aktor domain:
 - `INDEPENDENT_AUDITOR`: validator progress;
 - `GOV_PARTNER`: instansi pendukung.
 
+Dalam konteks studi kasus MRT/ODA, aktor tersebut dapat dipetakan secara konseptual sebagai:
+
+- pemerintah pusat atau lokal sebagai pengawas dan pembuat kebijakan;
+- executing agency seperti operator/pelaksana proyek;
+- pemberi dana asing sebagai loan provider;
+- kontraktor lokal atau asing sebagai pelaksana pekerjaan;
+- auditor/konsultan independen sebagai validator progress;
+- instansi pendukung seperti pemilik utilitas, transportasi, pertanahan, dan perizinan.
+
 Pembahasan IT:
 
 - setiap aktor memiliki boundary akses berbeda;
 - satu user dapat berada dalam organisasi tertentu;
 - organisasi berpartisipasi pada project melalui contract/assignment;
 - policy layer menentukan apakah action diizinkan.
+- terminologi lintas budaya dan institusi perlu dinormalisasi ke role sistem agar hierarki pelaporan lokal dan pihak asing dapat diproses tanpa bentrok.
 
 ### 3.3 Perancangan Arsitektur Sistem
 
@@ -353,11 +381,16 @@ Redis:
 Karakter arsitektur:
 
 - modular monolith;
-- type-safe persistence dengan sqlc;
+- Go sebagai bahasa backend terkompilasi yang cocok untuk service API konkuren;
+- type-safe persistence dengan SQLC agar query SQL tetap eksplisit namun hasilnya tervalidasi pada compile time;
 - PostgreSQL sebagai source of truth;
 - Redis sebagai acceleration layer;
 - WebSocket sebagai realtime delivery;
 - outbox worker sebagai event processor.
+
+Catatan pembahasan:
+
+> Pemilihan Go, PostgreSQL, dan SQLC dapat dijelaskan sebagai strategi untuk menjaga predictable performance, type-safety, dan kontrol eksplisit terhadap query. Namun, jika tidak ada benchmark formal, hindari klaim performa absolut seperti "paling cepat" atau "tanpa delay".
 
 ### 3.4 Perancangan Data dan Module
 
@@ -643,6 +676,15 @@ Bahas kenapa modular monolith cocok:
 - transaksi database lebih mudah dijaga;
 - boundary domain tetap jelas;
 - cocok untuk prototipe akademik dan sistem internal.
+- setiap domain seperti IAM, Project, Monitoring, Tracker, Finance, Support, Audit, Outbox, dan Realtime tetap dipisahkan pada package/module berbeda.
+
+Bahas juga stack implementasi:
+
+- Go dipakai untuk backend API yang konkuren dan type-safe secara bahasa;
+- PostgreSQL dipakai sebagai source of truth untuk data transaksional;
+- SQLC dipakai agar query SQL tetap eksplisit, tetapi parameter dan return type dapat dicek oleh compiler;
+- Redis dipakai secara optional untuk revocation, rate limit, cache dashboard, dan WebSocket fanout;
+- WebSocket dipakai sebagai delivery channel, sedangkan REST tetap menjadi kontrak data utama.
 
 Mapping code:
 
@@ -676,6 +718,7 @@ Hasil yang bisa ditulis:
 - policy layer membuat authorization konsisten;
 - controller tidak perlu menduplikasi pengecekan yang sama;
 - test policy membuktikan rule dapat diverifikasi otomatis.
+- role sistem menormalisasi perbedaan terminologi antar institusi, misalnya pemberi dana asing, executing agency lokal, kontraktor, auditor, dan instansi pendukung.
 
 ### 4.3 Implementasi FSM Transition Engine
 
@@ -707,7 +750,7 @@ Bahas ticket sebagai representasi hambatan lapangan.
 Poin teknis:
 
 - setiap ticket punya SLA record;
-- system menghitung remaining seconds;
+- sistem menghitung remaining seconds;
 - status SLA dikembalikan ke frontend;
 - ticket list/detail dapat menampilkan badge SLA;
 - SLA membantu mendeteksi bottleneck organisasi.
@@ -757,11 +800,13 @@ Solusi:
 - transaction boundary;
 - row lock `FOR UPDATE` pada contract/payment summary;
 - validasi pending request dan amount dalam transaksi.
+- operasi perhitungan available amount dilakukan dekat dengan database agar keputusan tidak hanya bergantung pada validasi frontend.
 
 Nilai jurnal:
 
 - menunjukkan pembahasan data consistency;
 - tidak hanya UI validation, tetapi proteksi backend.
+- relevan pada proyek ODA karena approval dan disbursement melibatkan aktor berbeda serta harus menjaga konsistensi nilai kontrak.
 
 ### 4.7 Implementasi Refresh Token Revocation dan Rate Limiting
 
@@ -802,6 +847,10 @@ Audit log mendukung:
 Kaitkan dengan governance:
 
 > Pada sistem multi-stakeholder, transparansi tidak cukup hanya melihat status terakhir. Sistem juga harus menyimpan siapa melakukan apa, kapan, terhadap entity apa, dan melalui request apa.
+
+Catatan istilah:
+
+> Gunakan istilah audit trail terpusat atau append-oriented audit log. Hindari klaim "immutable audit log" kecuali nanti database sudah diberi proteksi khusus seperti append-only permission, trigger pencegah update/delete, atau penyimpanan WORM.
 
 ### 4.9 Implementasi Secure Upload dan File Metadata
 
@@ -864,9 +913,10 @@ organization.member.invited
 
 Nilai jurnal:
 
-- realtime delivery meningkatkan visibility;
+- realtime delivery meningkatkan visibility dan mengurangi kebutuhan polling manual;
 - outbox menjaga reliability event;
-- topic authorization menjaga keamanan channel realtime.
+- topic authorization menjaga keamanan channel realtime;
+- event realtime diperlakukan sebagai sinyal untuk refetch data REST, bukan sebagai sumber kebenaran utama.
 
 ### 4.12 Implementasi Frontend Pendukung
 
@@ -887,6 +937,22 @@ Frontend improvement:
 Posisi dalam jurnal:
 
 > Frontend digunakan untuk membuktikan bahwa contract backend dapat dikonsumsi secara praktis, namun novelty utama tetap berada pada desain dan implementasi backend workflow governance.
+
+### 4.13 Keterkaitan dengan Studi Kasus MRT Jakarta Fase 2A
+
+Bagian ini dapat menjadi jembatan eksplisit dengan jurnal HI.
+
+Cara menulis:
+
+- MRT Jakarta Fase 2A dipakai sebagai studi kasus proyek infrastruktur transnasional berbasis ODA;
+- CP205, pekerjaan sipil, integrasi sistem, utilitas, dan koordinasi lintas instansi dipakai sebagai konteks kebutuhan workflow;
+- sistem tidak diklaim sebagai sistem resmi MRT/JICA, tetapi sebagai prototipe yang merepresentasikan kebutuhan teknis proyek sejenis;
+- aktor sistem dinormalisasi menjadi role generik agar model dapat diterapkan pada proyek infrastruktur lain;
+- nilai IT yang diuji adalah correctness workflow, access control, traceability, data integrity, dan realtime readiness.
+
+Contoh narasi:
+
+> Pada studi kasus MRT Jakarta Fase 2A, tantangan koordinasi tidak hanya muncul dari aspek konstruksi, tetapi juga dari aliran persetujuan, validasi progress, pelaporan hambatan, dan kebutuhan visibilitas pemberi dana asing. Prototipe backend yang dikembangkan memodelkan kebutuhan tersebut menjadi workflow digital berbasis FSM, SLA Tracking, policy layer, audit trail, dan realtime event delivery.
 
 ---
 
@@ -1001,7 +1067,7 @@ Saran lanjutan:
 
 ---
 
-## 4. Mapping Improvement Project ke Pembahasan Jurnal
+## 7. Mapping Improvement Project ke Pembahasan Jurnal
 
 | Improvement | Bahasan Jurnal | Nilai Informatika |
 | --- | --- | --- |
@@ -1022,18 +1088,18 @@ Saran lanjutan:
 
 ---
 
-## 5. Outline Singkat Siap Pakai
+## 8. Outline Singkat Siap Pakai
 
 Jika jurnal perlu dibuat lebih ringkas, gunakan struktur berikut:
 
 ```text
 Judul:
-Perancangan Backend Workflow Governance Proyek Infrastruktur Multi-Stakeholder Menggunakan Finite State Machine, SLA Tracking, dan Realtime Event Delivery
+Perancangan Backend Workflow Governance Proyek Infrastruktur Transnasional Berbasis ODA Menggunakan Finite State Machine, SLA Tracking, dan Realtime Event Delivery: Studi Kasus MRT Jakarta Fase 2A
 
 Abstrak
 
 I. Pendahuluan
-1.1 Latar belakang proyek infrastruktur multi-stakeholder
+1.1 Latar belakang proyek infrastruktur transnasional dan studi kasus MRT Jakarta Fase 2A
 1.2 Masalah asimetri informasi, red tape, dan workflow manual
 1.3 Rumusan masalah teknis
 1.4 Tujuan penelitian
@@ -1049,7 +1115,7 @@ II. Tinjauan Pustaka
 
 III. Metode
 3.1 Research and development
-3.2 Analisis aktor dan kebutuhan sistem
+3.2 Analisis aktor lintas institusi dan kebutuhan sistem
 3.3 Perancangan arsitektur modular monolith
 3.4 Perancangan FSM monitoring, ticket, dan finance
 3.5 Perancangan policy layer dan audit log
@@ -1066,7 +1132,8 @@ IV. Hasil dan Pembahasan
 4.7 Implementasi audit log dan secure upload
 4.8 Implementasi dashboard cache
 4.9 Implementasi outbox dan WebSocket realtime
-4.10 Evaluasi unit test, contract test, dan build
+4.10 Keterkaitan dengan studi kasus MRT Jakarta Fase 2A
+4.11 Evaluasi unit test, contract test, dan build
 
 V. Kesimpulan dan Saran
 5.1 Kesimpulan
@@ -1076,7 +1143,7 @@ V. Kesimpulan dan Saran
 
 ---
 
-## 6. Catatan Penting agar Klaim Jurnal Aman
+## 9. Catatan Penting agar Klaim Jurnal Aman
 
 Gunakan klaim yang sesuai implementasi:
 
@@ -1085,16 +1152,19 @@ Gunakan klaim yang sesuai implementasi:
 - boleh klaim REST tetap source of truth;
 - boleh klaim Redis optional dan sistem punya graceful degradation;
 - boleh klaim audit log dan outbox sudah menjadi fondasi accountability dan event reliability;
-- boleh klaim pengujian mencakup rule penting backend.
+- boleh klaim pengujian mencakup rule penting backend;
+- boleh klaim MRT Jakarta Fase 2A sebagai studi kasus atau konteks kebutuhan.
 
 Hindari klaim berlebihan:
 
 - jangan klaim sudah terintegrasi resmi dengan JICA, Pemprov, atau PT MRT Jakarta;
 - jangan klaim menggantikan seluruh proses birokrasi nyata;
 - jangan klaim realtime analytics penuh jika dashboard masih refetch dari REST;
+- jangan klaim event terkirim "tanpa delay"; gunakan near-real-time atau realtime delivery signal;
 - jangan klaim digital signature legal jika approval masih berupa user/org/timestamp;
+- jangan klaim audit log immutable jika belum ada proteksi append-only di level database/storage;
 - jangan klaim anti-red tape menyelesaikan masalah organisasi sepenuhnya, cukup tulis sebagai mekanisme mitigasi teknis.
 
 Kalimat aman:
 
-> Sistem yang dikembangkan merupakan prototipe backend workflow governance yang mensimulasikan kebutuhan monitoring proyek infrastruktur multi-stakeholder. Implementasi ini tidak menggantikan sistem resmi instansi, tetapi menunjukkan bagaimana FSM, SLA Tracking, access control, audit trail, dan realtime event delivery dapat digunakan untuk meningkatkan transparansi serta traceability proses.
+> Sistem yang dikembangkan merupakan prototipe backend workflow governance berbasis studi kasus proyek infrastruktur transnasional seperti MRT Jakarta Fase 2A. Implementasi ini tidak menggantikan sistem resmi instansi, tetapi menunjukkan bagaimana FSM, SLA Tracking, access control, audit trail, dan realtime event delivery dapat digunakan untuk meningkatkan transparansi serta traceability proses.
