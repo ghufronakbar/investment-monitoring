@@ -1,0 +1,7 @@
+# 1.1 Latar Belakang
+
+Proyek infrastruktur transnasional berbasis Official Development Assistance (ODA), seperti MRT Jakarta Fase 2A, melibatkan banyak aktor dengan kewenangan berbeda, mulai dari pemerintah, executing agency, pemberi dana asing, kontraktor, auditor independen, hingga instansi pendukung. Kompleksitas ini membuat monitoring proyek tidak cukup hanya menampilkan data progress, tetapi juga perlu mengatur alur kerja, validasi status, pembatasan akses, dan riwayat perubahan secara transparan.
+
+Dalam praktiknya, koordinasi lintas lembaga dapat menimbulkan asimetri informasi dan red tape. Suatu proses dapat terlihat berjalan, tetapi tidak selalu jelas siapa penanggung jawabnya, sejak kapan status tersebut aktif, apakah sudah melewati batas waktu, dan apakah perubahan status dilakukan oleh aktor yang berwenang. Kondisi ini menunjukkan perlunya sistem yang mampu memodelkan proses bisnis secara formal dan dapat diaudit.
+
+Penelitian ini mengusulkan prototipe backend workflow governance yang berfokus pada empat pilar utama: Finite State Machine (FSM) untuk mengatur transisi workflow, organization-centric access control untuk membatasi kewenangan aktor, SLA tracking dan audit trail untuk meningkatkan traceability, serta realtime event delivery untuk memberi sinyal pembaruan data. WebSocket digunakan sebagai sinyal refetch, sedangkan REST API dan database tetap menjadi sumber kebenaran utama.
