@@ -275,3 +275,58 @@ func TestGetTicketsMissingContract(t *testing.T) {
 	_, err := NewService(&fakeStore{contractErr: sql.ErrNoRows}, nil, nil).GetTickets(context.Background(), GetTicketsParams{ProjectID: uuid.New()})
 	testutil.AssertAppError(t, err, "CONTRACT_NOT_FOUND")
 }
+
+func TestTicketLifecycleRejectsOutOfOrderTransitions(t *testing.T) {
+	ticketID := uuid.New()
+	status := func(s entity.TicketStatusEnum) *string {
+		v := string(s)
+		return &v
+	}
+
+	addLogCases := []struct {
+		name    string
+		current entity.TicketStatusEnum
+		target  entity.TicketStatusEnum
+		want    string
+	}{
+		{"open cannot skip to in progress", entity.TicketStatusEnumOPEN, entity.TicketStatusEnumINPROGRESS, "INVALID_STATUS_TRANSITION"},
+		{"open cannot skip to resolved", entity.TicketStatusEnumOPEN, entity.TicketStatusEnumRESOLVED, "INVALID_STATUS_TRANSITION"},
+		{"assigned cannot skip to resolved", entity.TicketStatusEnumASSIGNED, entity.TicketStatusEnumRESOLVED, "INVALID_STATUS_TRANSITION"},
+		{"status cannot be set back to open", entity.TicketStatusEnumINPROGRESS, entity.TicketStatusEnumOPEN, "INVALID_STATUS_TRANSITION"},
+		{"assigned is reachable only by assignment", entity.TicketStatusEnumOPEN, entity.TicketStatusEnumASSIGNED, "INVALID_STATUS_TRANSITION"},
+		{"log entry cannot close a ticket", entity.TicketStatusEnumRESOLVED, entity.TicketStatusEnumCLOSED, "CLOSE_VIA_CLOSE_ENDPOINT"},
+		{"closed ticket is terminal", entity.TicketStatusEnumCLOSED, entity.TicketStatusEnumINPROGRESS, "TICKET_ALREADY_CLOSED"},
+	}
+	for _, tt := range addLogCases {
+		t.Run(tt.name, func(t *testing.T) {
+			store := &fakeStore{latestStatus: tt.current}
+			_, err := NewService(store, nil, nil).AddLog(context.Background(), AddTicketLogParams{
+				TicketID:    ticketID,
+				Description: "status update",
+				NewStatus:   status(tt.target),
+			})
+			testutil.AssertAppError(t, err, tt.want)
+		})
+	}
+
+	for _, current := range []entity.TicketStatusEnum{
+		entity.TicketStatusEnumOPEN,
+		entity.TicketStatusEnumASSIGNED,
+		entity.TicketStatusEnumINPROGRESS,
+	} {
+		t.Run("close requires resolved from "+string(current), func(t *testing.T) {
+			store := &fakeStore{latestStatus: current}
+			_, err := NewService(store, nil, nil).CloseTicket(context.Background(), CloseTicketParams{TicketID: ticketID})
+			testutil.AssertAppError(t, err, "INVALID_STATUS_TRANSITION")
+		})
+	}
+
+	t.Run("resolved ticket cannot be reassigned", func(t *testing.T) {
+		store := &fakeStore{latestStatus: entity.TicketStatusEnumRESOLVED}
+		_, err := NewService(store, nil, nil).AssignTicket(context.Background(), AssignTicketParams{
+			TicketID:      ticketID,
+			AssignToOrgID: uuid.New(),
+		})
+		testutil.AssertAppError(t, err, "INVALID_STATUS_TRANSITION")
+	})
+}

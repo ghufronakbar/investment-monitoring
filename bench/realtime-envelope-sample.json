@@ -1,0 +1,19 @@
+{
+  "type": "payment.paid",
+  "topic": "project.b6e24300-f3ed-4381-a14e-ece4e5333e74.finance",
+  "data": {
+    "aggregateId": "577e9a28-36f6-4df5-8f11-6bcc2251854e",
+    "aggregateType": "payment_request",
+    "eventType": "PaymentPaid",
+    "outboxEventId": "cd71b338-402b-47ca-a838-b30696bed11f",
+    "payload": {
+      "actorOrgId": "626763d6-68de-4b10-89b7-88f3dc5c7355",
+      "actorUserId": "123f69cf-9f60-422b-9189-bf05f65a5bb0",
+      "contractId": "d9b6a7cd-f044-400b-9878-834be55d7c42",
+      "paymentRequestId": "577e9a28-36f6-4df5-8f11-6bcc2251854e",
+      "projectId": "b6e24300-f3ed-4381-a14e-ece4e5333e74",
+      "status": "PAID"
+    }
+  },
+  "sentAt": "2026-11-08T08:37:05.845405+07:00"
+}

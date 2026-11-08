@@ -7,8 +7,6 @@ import (
 	"investment_monitoring/internal/http/internal_middleware"
 
 	// Example module
-	subexample_controller "investment_monitoring/internal/module/example/subexample/controller"
-	subexample_service "investment_monitoring/internal/module/example/subexample/service"
 
 	// IAM module
 	auth_controller "investment_monitoring/internal/module/iam/auth/controller"
@@ -63,7 +61,6 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) (
 	authRateLimiter := internal_middleware.NewAuthRateLimiter(rdb, cfg.REDIS_PREFIX)
 
 	// Example service
-	subexampleSvc := subexample_service.NewService(db)
 
 	// IAM services
 	authSvc := auth_service.NewService(db, tokenSvc, rdb, cfg)
@@ -92,7 +89,6 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) (
 	dashboardSvc := dashboard_service.NewService(db, rdb, cfg)
 
 	// 2. =========== INITIAL HANDLER ===========
-	subexampleHandler := subexample_controller.NewHandler(subexampleSvc)
 	authHandler := auth_controller.NewHandler(authSvc)
 	orgHandler := organization_controller.NewHandler(orgSvc, db)
 	profileHandler := profile_controller.NewHandler(profileSvc)
@@ -106,12 +102,6 @@ func NewRouter(db *repository.SQLStore, rdb *redis.Client, cfg *config.Config) (
 
 	// 3. =========== MANAGE ROUTING ===========
 	r := chi.NewRouter()
-
-	// Example routes
-	r.Route("/example", func(r chi.Router) {
-		r.Use(authMiddleware)
-		r.Mount("/subexample", subexampleHandler.Routes())
-	})
 
 	// IAM routes
 	r.Route("/iam", func(r chi.Router) {

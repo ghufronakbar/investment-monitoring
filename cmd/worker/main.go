@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -13,9 +14,20 @@ import (
 	token_service "investment_monitoring/internal/module/support/token/service"
 	"investment_monitoring/internal/outbox"
 	repository "investment_monitoring/internal/repository/entity"
+
+	"github.com/lib/pq"
+)
+
+const (
+	outboxChannel = "outbox_events"
+	batchSize     = 25
 )
 
 func main() {
+	pollInterval := flag.Duration("poll-interval", 5*time.Second, "fallback polling interval for outbox events")
+	listen := flag.Bool("listen", true, "wake on PostgreSQL NOTIFY in addition to polling")
+	flag.Parse()
+
 	cfg := config.Load()
 
 	db, err := config.ConnectDB(cfg.DATABASE_URL)
@@ -40,10 +52,33 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(*pollInterval)
 	defer ticker.Stop()
 
-	log.Println("Outbox worker started")
+	// LISTEN wakes the worker right after an event commits; the ticker stays as
+	// a fallback for missed notifications or when LISTEN is unavailable.
+	var notify <-chan *pq.Notification
+	if *listen {
+		listener := pq.NewListener(cfg.DATABASE_URL, time.Second, time.Minute, func(ev pq.ListenerEventType, err error) {
+			if err != nil {
+				log.Println("Outbox listener:", err)
+			}
+		})
+		if err := listener.Listen(outboxChannel); err != nil {
+			log.Println("Outbox LISTEN unavailable, falling back to polling only:", err)
+		} else {
+			defer listener.Close()
+			notify = listener.Notify
+		}
+	}
+
+	log.Printf("Outbox worker started poll_interval=%s listen=%v", *pollInterval, notify != nil)
+
+	process := func() {
+		if err := processor.ProcessBatch(ctx, batchSize); err != nil {
+			log.Println("Outbox worker error:", err)
+		}
+	}
 
 	for {
 		select {
@@ -51,9 +86,9 @@ func main() {
 			log.Println("Outbox worker stopped")
 			return
 		case <-ticker.C:
-			if err := processor.ProcessBatch(ctx, 25); err != nil {
-				log.Println("Outbox worker error:", err)
-			}
+			process()
+		case <-notify:
+			process()
 		}
 	}
 }

@@ -1,0 +1,4 @@
+exhaustive_test.go:141: FSM monitoring states=3 inputs=2 pairs=6 allowed=2 rejected=4
+exhaustive_test.go:141: FSM finance    states=6 inputs=5 pairs=30 allowed=5 rejected=25
+exhaustive_test.go:141: FSM tracker    states=5 inputs=7 pairs=35 allowed=11 rejected=24
+exhaustive_test.go:145: FSM total pairs=71 allowed=18 rejected=53

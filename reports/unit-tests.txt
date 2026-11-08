@@ -1,0 +1,44 @@
+	investment_monitoring/cmd/api		coverage: 0.0% of statements
+	investment_monitoring/cmd/latencybench		coverage: 0.0% of statements
+	investment_monitoring/cmd/worker		coverage: 0.0% of statements
+	investment_monitoring/config		coverage: 0.0% of statements
+ok  	investment_monitoring/internal/audit	0.504s	coverage: 84.4% of statements
+	investment_monitoring/internal/http		coverage: 0.0% of statements
+ok  	investment_monitoring/internal/http/internal_middleware	0.392s	coverage: 34.3% of statements
+ok  	investment_monitoring/internal/module/finance/controller	0.911s	coverage: 32.5% of statements
+ok  	investment_monitoring/internal/module/finance/service	0.579s	coverage: 28.9% of statements
+ok  	investment_monitoring/internal/module/iam/auth/controller	1.221s	coverage: 36.5% of statements
+ok  	investment_monitoring/internal/module/iam/auth/service	1.888s	coverage: 59.5% of statements
+	investment_monitoring/internal/module/iam/organization/controller		coverage: 0.0% of statements
+	investment_monitoring/internal/module/iam/organization/service		coverage: 0.0% of statements
+	investment_monitoring/internal/module/iam/profile/controller		coverage: 0.0% of statements
+	investment_monitoring/internal/module/iam/profile/service		coverage: 0.0% of statements
+	investment_monitoring/internal/module/monitoring/controller		coverage: 0.0% of statements
+ok  	investment_monitoring/internal/module/monitoring/service	1.088s	coverage: 28.3% of statements
+ok  	investment_monitoring/internal/module/project/controller	1.240s	coverage: 27.9% of statements
+ok  	investment_monitoring/internal/module/project/service	1.421s	coverage: 11.2% of statements
+ok  	investment_monitoring/internal/module/realtime/websocket/controller	1.373s	coverage: 66.7% of statements
+ok  	investment_monitoring/internal/module/realtime/websocket/service	0.915s	coverage: 33.2% of statements
+ok  	investment_monitoring/internal/module/support/dashboard/cache	1.198s	coverage: 50.0% of statements
+	investment_monitoring/internal/module/support/dashboard/controller		coverage: 0.0% of statements
+ok  	investment_monitoring/internal/module/support/dashboard/service	1.451s	coverage: 81.8% of statements
+	investment_monitoring/internal/module/support/mail/service		coverage: 0.0% of statements
+ok  	investment_monitoring/internal/module/support/sla/service	1.599s	coverage: 65.0% of statements
+ok  	investment_monitoring/internal/module/support/token/service	2.036s	coverage: 87.2% of statements
+	investment_monitoring/internal/module/support/uploader/controller		coverage: 0.0% of statements
+ok  	investment_monitoring/internal/module/support/uploader/service	1.961s	coverage: 29.2% of statements
+ok  	investment_monitoring/internal/module/tracker/controller	2.051s	coverage: 48.6% of statements
+ok  	investment_monitoring/internal/module/tracker/service	2.233s	coverage: 39.8% of statements
+ok  	investment_monitoring/internal/outbox	2.055s	coverage: 59.1% of statements
+ok  	investment_monitoring/internal/policy	2.099s	coverage: 83.1% of statements
+	investment_monitoring/internal/repository/entity		coverage: 0.0% of statements
+	investment_monitoring/internal/testutil		coverage: 0.0% of statements
+ok  	investment_monitoring/internal/workflow	2.024s	coverage: 89.6% of statements
+	investment_monitoring/pkg/errs		coverage: 0.0% of statements
+	investment_monitoring/pkg/filter		coverage: 0.0% of statements
+ok  	investment_monitoring/pkg/hash	2.169s	coverage: 80.0% of statements
+	investment_monitoring/pkg/logger		coverage: 0.0% of statements
+	investment_monitoring/pkg/pagination		coverage: 0.0% of statements
+	investment_monitoring/pkg/response		coverage: 0.0% of statements
+ok  	investment_monitoring/pkg/utils	2.121s	coverage: 45.7% of statements
+unit test cases incl. subtests: passed=253 failed=0

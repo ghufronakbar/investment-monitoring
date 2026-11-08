@@ -1,0 +1,4 @@
+run=poll n=300 warmup=10 rate=2.0/s lost=0 go=go1.25.5 os=darwin/arm64 cpus=8 postgres=17.11 (Homebrew)
+commit_to_client_ms    samples=300 mean=2526.5 p50=2509.7 p95=4742.4 p99=4947.0 max=4988.9
+insert_to_processed_ms samples=300 mean=2527.9 p50=2515.0 p95=4740.1 p99=4951.5 max=4989.9
+samples written to bench/latency-poll-20261108-083340.csv
