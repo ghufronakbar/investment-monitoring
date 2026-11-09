@@ -1,3 +1,5 @@
 .env
 tmp
 node_modules
+# Benchmark process logs; results (*.csv, *.txt) are kept
+bench/*.log

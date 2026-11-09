@@ -12,40 +12,26 @@ const (
 	TrackerInputClose       Input = "CLOSE"
 )
 
+// trackerMachine enforces the obstacle-ticket lifecycle
+// OPEN -> ASSIGNED -> IN_PROGRESS -> RESOLVED -> CLOSED.
+// The only backward edges are explicit: reassignment while work is not yet
+// resolved, and reopening a resolved ticket when field verification fails.
+// SET_OPEN and SET_ASSIGNED have no transitions; assignment goes through ASSIGN.
 var trackerMachine = NewMachine([]Transition{
 	{From: State(entity.TicketStatusEnumOPEN), Input: TrackerInputAssign, To: State(entity.TicketStatusEnumASSIGNED)},
 	{From: State(entity.TicketStatusEnumASSIGNED), Input: TrackerInputAssign, To: State(entity.TicketStatusEnumASSIGNED)},
 	{From: State(entity.TicketStatusEnumINPROGRESS), Input: TrackerInputAssign, To: State(entity.TicketStatusEnumASSIGNED)},
-	{From: State(entity.TicketStatusEnumRESOLVED), Input: TrackerInputAssign, To: State(entity.TicketStatusEnumASSIGNED)},
 
 	{From: State(entity.TicketStatusEnumOPEN), Input: TrackerInputComment, To: State(entity.TicketStatusEnumOPEN)},
 	{From: State(entity.TicketStatusEnumASSIGNED), Input: TrackerInputComment, To: State(entity.TicketStatusEnumASSIGNED)},
 	{From: State(entity.TicketStatusEnumINPROGRESS), Input: TrackerInputComment, To: State(entity.TicketStatusEnumINPROGRESS)},
 	{From: State(entity.TicketStatusEnumRESOLVED), Input: TrackerInputComment, To: State(entity.TicketStatusEnumRESOLVED)},
 
-	{From: State(entity.TicketStatusEnumOPEN), Input: TrackerInputSetOpen, To: State(entity.TicketStatusEnumOPEN)},
-	{From: State(entity.TicketStatusEnumASSIGNED), Input: TrackerInputSetOpen, To: State(entity.TicketStatusEnumOPEN)},
-	{From: State(entity.TicketStatusEnumINPROGRESS), Input: TrackerInputSetOpen, To: State(entity.TicketStatusEnumOPEN)},
-	{From: State(entity.TicketStatusEnumRESOLVED), Input: TrackerInputSetOpen, To: State(entity.TicketStatusEnumOPEN)},
-
-	{From: State(entity.TicketStatusEnumOPEN), Input: TrackerInputSetAssigned, To: State(entity.TicketStatusEnumASSIGNED)},
-	{From: State(entity.TicketStatusEnumASSIGNED), Input: TrackerInputSetAssigned, To: State(entity.TicketStatusEnumASSIGNED)},
-	{From: State(entity.TicketStatusEnumINPROGRESS), Input: TrackerInputSetAssigned, To: State(entity.TicketStatusEnumASSIGNED)},
-	{From: State(entity.TicketStatusEnumRESOLVED), Input: TrackerInputSetAssigned, To: State(entity.TicketStatusEnumASSIGNED)},
-
-	{From: State(entity.TicketStatusEnumOPEN), Input: TrackerInputSetProgress, To: State(entity.TicketStatusEnumINPROGRESS)},
 	{From: State(entity.TicketStatusEnumASSIGNED), Input: TrackerInputSetProgress, To: State(entity.TicketStatusEnumINPROGRESS)},
-	{From: State(entity.TicketStatusEnumINPROGRESS), Input: TrackerInputSetProgress, To: State(entity.TicketStatusEnumINPROGRESS)},
 	{From: State(entity.TicketStatusEnumRESOLVED), Input: TrackerInputSetProgress, To: State(entity.TicketStatusEnumINPROGRESS)},
 
-	{From: State(entity.TicketStatusEnumOPEN), Input: TrackerInputSetResolved, To: State(entity.TicketStatusEnumRESOLVED)},
-	{From: State(entity.TicketStatusEnumASSIGNED), Input: TrackerInputSetResolved, To: State(entity.TicketStatusEnumRESOLVED)},
 	{From: State(entity.TicketStatusEnumINPROGRESS), Input: TrackerInputSetResolved, To: State(entity.TicketStatusEnumRESOLVED)},
-	{From: State(entity.TicketStatusEnumRESOLVED), Input: TrackerInputSetResolved, To: State(entity.TicketStatusEnumRESOLVED)},
 
-	{From: State(entity.TicketStatusEnumOPEN), Input: TrackerInputClose, To: State(entity.TicketStatusEnumCLOSED)},
-	{From: State(entity.TicketStatusEnumASSIGNED), Input: TrackerInputClose, To: State(entity.TicketStatusEnumCLOSED)},
-	{From: State(entity.TicketStatusEnumINPROGRESS), Input: TrackerInputClose, To: State(entity.TicketStatusEnumCLOSED)},
 	{From: State(entity.TicketStatusEnumRESOLVED), Input: TrackerInputClose, To: State(entity.TicketStatusEnumCLOSED)},
 })
 

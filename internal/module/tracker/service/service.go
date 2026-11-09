@@ -382,7 +382,7 @@ func (s *TrackerService) AssignTicket(ctx context.Context, params AssignTicketPa
 
 	nextStatus, ok := workflow.TrackerNextStatus(currentStatus, workflow.TrackerInputAssign)
 	if !ok {
-		return result, errs.NewBadRequest("TICKET_ALREADY_CLOSED")
+		return result, trackerTransitionError(currentStatus)
 	}
 
 	// Verify assignee is GOV_PARTNER
@@ -521,16 +521,18 @@ func (s *TrackerService) AddLog(ctx context.Context, params AddTicketLogParams) 
 		if !ok {
 			return result, errs.NewBadRequest("INVALID_STATUS_VALUE")
 		}
+		// Closing requires field verification by the executing agency, so it is
+		// only reachable through CloseTicket, never through a log entry.
+		if input == workflow.TrackerInputClose {
+			return result, errs.NewBadRequest("CLOSE_VIA_CLOSE_ENDPOINT")
+		}
 		action = entity.TicketLogActionEnumSTATUSCHANGED
 		transitionInput = input
 	}
 
 	newStatus, ok := workflow.TrackerNextStatus(currentStatus, transitionInput)
 	if !ok {
-		if currentStatus == entity.TicketStatusEnumCLOSED {
-			return result, errs.NewBadRequest("TICKET_ALREADY_CLOSED")
-		}
-		return result, errs.NewBadRequest("INVALID_STATUS_TRANSITION")
+		return result, trackerTransitionError(currentStatus)
 	}
 
 	var attachmentUrl sql.NullString
@@ -698,7 +700,7 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 
 	nextStatus, ok := workflow.TrackerNextStatus(currentStatus, workflow.TrackerInputClose)
 	if !ok {
-		return TicketReturn{}, errs.NewBadRequest("TICKET_ALREADY_CLOSED")
+		return TicketReturn{}, trackerTransitionError(currentStatus)
 	}
 
 	err = s.store.ExecTx(ctx, func(q *entity.Queries) error {
@@ -762,6 +764,15 @@ func (s *TrackerService) CloseTicket(ctx context.Context, params CloseTicketPara
 
 	// Return updated ticket
 	return s.GetTicketByID(ctx, GetTicketByIDParams{TicketID: params.TicketID})
+}
+
+// trackerTransitionError distinguishes a closed ticket from any other
+// transition the tracker FSM does not allow.
+func trackerTransitionError(current entity.TicketStatusEnum) error {
+	if current == entity.TicketStatusEnumCLOSED {
+		return errs.NewBadRequest("TICKET_ALREADY_CLOSED")
+	}
+	return errs.NewBadRequest("INVALID_STATUS_TRANSITION")
 }
 
 func (s *TrackerService) invalidateDashboardByTicketID(ctx context.Context, ticketID uuid.UUID) error {

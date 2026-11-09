@@ -1,0 +1,4 @@
+run=listen n=1000 warmup=20 rate=20.0/s lost=0 go=go1.25.5 os=darwin/arm64 cpus=8 postgres=17.11 (Homebrew)
+commit_to_client_ms    samples=1000 mean=3.1 p50=3.1 p95=4.2 p99=7.1 max=34.3
+insert_to_processed_ms samples=1000 mean=4.5 p50=4.5 p95=6.2 p99=11.7 max=36.8
+samples written to bench/latency-listen-20261108-082324.csv

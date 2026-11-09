@@ -1,0 +1,251 @@
+2026/11/08 08:37:43 OK   20260114083618_init_database.sql (74.54ms)
+2026/11/08 08:37:43 OK   20260114110651_init_seeder.sql (3.79ms)
+2026/11/08 08:37:43 OK   20260627090000_add_sla_records.sql (5.41ms)
+2026/11/08 08:37:43 OK   20260627093000_add_audit_logs.sql (6.29ms)
+2026/11/08 08:37:43 OK   20260627094500_add_outbox_events.sql (3.59ms)
+2026/11/08 08:37:43 OK   20260627100000_add_file_metadata.sql (4.76ms)
+2026/11/08 08:37:43 OK   20261108090000_audit_logs_integrity.sql (4.55ms)
+2026/11/08 08:37:43 OK   20261108100000_outbox_notify.sql (670.71µs)
+2026/11/08 08:37:43 OK   20261108110000_drop_examples.sql (1.52ms)
+2026/11/08 08:37:43 goose: successfully migrated database to version: 20261108110000
+=== RUN   TestAuditLogIntegrity
+=== RUN   TestAuditLogIntegrity/AUDIT-01_every_inserted_row_is_hashed_and_linked_to_its_predecessor
+=== RUN   TestAuditLogIntegrity/AUDIT-02_UPDATE,_DELETE_and_TRUNCATE_are_rejected
+=== RUN   TestAuditLogIntegrity/AUDIT-03_deleting_an_actor_referenced_by_the_trail_is_rejected
+=== RUN   TestAuditLogIntegrity/AUDIT-04_tampering_that_bypasses_the_triggers_is_detected
+    audit_test.go:131: AUDIT-04 detected tampering at seq=5: row content does not match row_hash
+=== RUN   TestAuditLogIntegrity/AUDIT-05_concurrent_inserts_keep_a_single_unforked_chain
+--- PASS: TestAuditLogIntegrity (0.21s)
+    --- PASS: TestAuditLogIntegrity/AUDIT-01_every_inserted_row_is_hashed_and_linked_to_its_predecessor (0.02s)
+    --- PASS: TestAuditLogIntegrity/AUDIT-02_UPDATE,_DELETE_and_TRUNCATE_are_rejected (0.01s)
+    --- PASS: TestAuditLogIntegrity/AUDIT-03_deleting_an_actor_referenced_by_the_trail_is_rejected (0.00s)
+    --- PASS: TestAuditLogIntegrity/AUDIT-04_tampering_that_bypasses_the_triggers_is_detected (0.01s)
+    --- PASS: TestAuditLogIntegrity/AUDIT-05_concurrent_inserts_keep_a_single_unforked_chain (0.11s)
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-01
+    authorization_test.go:196: AUTH-01 | contractor submits progress on its own project                                        | policy=200 | rbac_baseline_allows=true | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-02
+    authorization_test.go:196: AUTH-02 | contractor submits progress on another project (cross-project)                        | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-03
+    authorization_test.go:196: AUTH-03 | former member of the contractor submits progress                                      | policy=403 | rbac_baseline_allows=false | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-04
+    authorization_test.go:196: AUTH-04 | user without any organization submits progress                                        | policy=403 | rbac_baseline_allows=false | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-05
+    authorization_test.go:196: AUTH-05 | contracted auditor validates progress                                                 | policy=200 | rbac_baseline_allows=true | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-06
+    authorization_test.go:196: AUTH-06 | auditor-type organization without a contract validates progress                       | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-07
+    authorization_test.go:196: AUTH-07 | contractor-type organization holding the auditor position validates progress          | policy=200 | rbac_baseline_allows=false | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-08
+    authorization_test.go:196: AUTH-08 | same organization submits progress on the project it audits                           | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-09
+    authorization_test.go:196: AUTH-09 | same organization validates progress on a project it does not audit                   | policy=403 | rbac_baseline_allows=false | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-10
+    authorization_test.go:196: AUTH-10 | auditor-type organization without a contract approves a payment                       | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-11
+    authorization_test.go:196: AUTH-11 | contractor-type organization holding the auditor position approves a payment          | policy=200 | rbac_baseline_allows=false | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-12
+    authorization_test.go:196: AUTH-12 | contracted lender disburses a payment                                                 | policy=200 | rbac_baseline_allows=true | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-13
+    authorization_test.go:196: AUTH-13 | lender-type organization without a contract disburses a payment                       | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-14
+    authorization_test.go:196: AUTH-14 | executing agency admin assigns a ticket                                               | policy=200 | rbac_baseline_allows=true | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-15
+    authorization_test.go:196: AUTH-15 | executing agency non-admin member assigns a ticket                                    | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-16
+    authorization_test.go:196: AUTH-16 | executing agency of another project assigns a ticket                                  | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-17
+    authorization_test.go:196: AUTH-17 | assigned government partner updates a ticket                                          | policy=200 | rbac_baseline_allows=true | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-18
+    authorization_test.go:196: AUTH-18 | government partner on the contract but not assigned updates a ticket                  | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-19
+    authorization_test.go:196: AUTH-19 | government partner outside the contract updates a ticket                              | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-20
+    authorization_test.go:196: AUTH-20 | contractor that raised the ticket updates its status                                  | policy=403 | rbac_baseline_allows=false | differs=false
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-21
+    authorization_test.go:196: AUTH-21 | contractor of another project views the monitoring data                               | policy=403 | rbac_baseline_allows=true | differs=true
+=== RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-22
+    authorization_test.go:196: AUTH-22 | government supervisor outside the contract views the project (supervisory fallback)   | policy=200 | rbac_baseline_allows=true | differs=false
+=== NAME  TestOrganizationCentricAuthorizationVersusRBAC
+    authorization_test.go:200: AUTH summary: cases=22 differ_from_rbac_baseline=12
+--- PASS: TestOrganizationCentricAuthorizationVersusRBAC (0.13s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-01 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-02 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-03 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-04 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-05 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-06 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-07 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-08 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-09 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-10 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-11 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-12 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-13 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-14 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-15 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-16 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-17 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-18 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-19 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-20 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-21 (0.00s)
+    --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-22 (0.00s)
+=== RUN   TestAPIContractScenarios
+2026/11/08 08:37:45 websocket redis fanout subscriber started channel=contract_2d4f4e87:ws:events
+=== RUN   TestAPIContractScenarios/CT-FSM-01
+    contract_test.go:411: CT-FSM-01 | FSM       | contractor submits a progress report                                               | expected=200 SUCCESS_SUBMIT_PROGRESS | actual=200 SUCCESS_SUBMIT_PROGRESS | pass=true
+=== RUN   TestAPIContractScenarios/CT-FSM-02
+    contract_test.go:411: CT-FSM-02 | FSM       | contracted auditor accepts the pending report                                      | expected=200 SUCCESS_VALIDATE_PROGRESS | actual=200 SUCCESS_VALIDATE_PROGRESS | pass=true
+=== RUN   TestAPIContractScenarios/CT-FSM-03
+PROGRESS_ALREADY_VALIDATED
+    contract_test.go:411: CT-FSM-03 | FSM       | auditor validates the same report again (terminal state)                           | expected=400 PROGRESS_ALREADY_VALIDATED | actual=400 PROGRESS_ALREADY_VALIDATED | pass=true
+=== RUN   TestAPIContractScenarios/CT-FSM-04
+INVALID_STATUS_TRANSITION
+    contract_test.go:411: CT-FSM-04 | FSM       | executing agency approves a payment that skipped the auditor                       | expected=400 INVALID_STATUS_TRANSITION | actual=400 INVALID_STATUS_TRANSITION | pass=true
+=== RUN   TestAPIContractScenarios/CT-FSM-05
+INVALID_STATUS_TRANSITION
+    contract_test.go:411: CT-FSM-05 | FSM       | lender disburses a payment still awaiting approval                                 | expected=400 INVALID_STATUS_TRANSITION | actual=400 INVALID_STATUS_TRANSITION | pass=true
+=== RUN   TestAPIContractScenarios/CT-FSM-06
+INVALID_STATUS_TRANSITION
+    contract_test.go:411: CT-FSM-06 | FSM       | assigned government partner resolves a ticket that was never started               | expected=400 INVALID_STATUS_TRANSITION | actual=400 INVALID_STATUS_TRANSITION | pass=true
+=== RUN   TestAPIContractScenarios/CT-POL-01
+MISSING_TOKEN
+    contract_test.go:411: CT-POL-01 | Policy    | request without an access token                                                    | expected=401  | actual=401 MISSING_TOKEN | pass=true
+=== RUN   TestAPIContractScenarios/CT-POL-02
+AUDITOR_REQUIRED
+    contract_test.go:411: CT-POL-02 | Policy    | executing agency attempts to validate progress                                     | expected=403 AUDITOR_REQUIRED | actual=403 AUDITOR_REQUIRED | pass=true
+=== RUN   TestAPIContractScenarios/CT-POL-03
+LOAN_PROVIDER_REQUIRED
+    contract_test.go:411: CT-POL-03 | Policy    | contractor attempts to disburse an approved payment                                | expected=403 LOAN_PROVIDER_REQUIRED | actual=403 LOAN_PROVIDER_REQUIRED | pass=true
+=== RUN   TestAPIContractScenarios/CT-POL-04
+CONTRACTOR_REQUIRED
+    contract_test.go:411: CT-POL-04 | Policy    | contractor of another project submits progress on this project                     | expected=403 CONTRACTOR_REQUIRED | actual=403 CONTRACTOR_REQUIRED | pass=true
+=== RUN   TestAPIContractScenarios/CT-POL-05
+NOT_ASSIGNED_TO_YOUR_ORG
+    contract_test.go:411: CT-POL-05 | Policy    | government partner on the contract but not assigned updates a ticket               | expected=403 NOT_ASSIGNED_TO_YOUR_ORG | actual=403 NOT_ASSIGNED_TO_YOUR_ORG | pass=true
+=== RUN   TestAPIContractScenarios/CT-POL-06
+    contract_test.go:411: CT-POL-06 | Policy    | contracted lender disburses an agency-approved payment                             | expected=200 SUCCESS_DISBURSE | actual=200 SUCCESS_DISBURSE | pass=true
+=== RUN   TestAPIContractScenarios/CT-SLA-01
+    contract_test.go:411: CT-SLA-01 | SLA/Audit | contractor raises an obstacle ticket; a 7-day SLA starts                           | expected=200 SUCCESS_CREATE_TICKET | actual=200 SUCCESS_CREATE_TICKET | pass=true
+=== RUN   TestAPIContractScenarios/CT-SLA-02
+    contract_test.go:411: CT-SLA-02 | SLA/Audit | executing agency assigns the ticket; the SLA restarts for the new state            | expected=200 SUCCESS_ASSIGN_TICKET | actual=200 SUCCESS_ASSIGN_TICKET | pass=true
+=== RUN   TestAPIContractScenarios/CT-SLA-03
+    contract_test.go:411: CT-SLA-03 | SLA/Audit | ticket past its due time is reported as SLA_VIOLATED on read                       | expected=200 SUCCESS_GET_TICKET | actual=200 SUCCESS_GET_TICKET | pass=true
+=== RUN   TestAPIContractScenarios/CT-AUD-01
+    contract_test.go:411: CT-AUD-01 | SLA/Audit | assigned partner starts work; the audit trail records actor, IP, agent and request ID | expected=200 SUCCESS_ADD_LOG | actual=200 SUCCESS_ADD_LOG | pass=true
+=== RUN   TestAPIContractScenarios/CT-AUD-02
+    contract_test.go:411: CT-AUD-02 | SLA/Audit | executing agency closes a resolved ticket; the SLA is marked resolved              | expected=200 SUCCESS_CLOSE_TICKET | actual=200 SUCCESS_CLOSE_TICKET | pass=true
+=== RUN   TestAPIContractScenarios/CT-AUD-03
+    contract_test.go:411: CT-AUD-03 | SLA/Audit | audit hash chain verifies intact after the scenario                                | expected=200 CHAIN_INTACT | actual=200 CHAIN_INTACT | pass=true
+=== RUN   TestAPIContractScenarios/CT-RT-01
+INVALID_OR_EXPIRED_TOKEN
+    contract_test.go:411: CT-RT-01 | Realtime  | WebSocket handshake without an access token                                        | expected=401  | actual=401  | pass=true
+=== RUN   TestAPIContractScenarios/CT-RT-02
+2026/11/08 08:37:45 websocket client connected client_id=8828dd27-5d76-43fe-97e3-3b10f78102d4 user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+2026/11/08 08:37:45 websocket subscription updated client_id=8828dd27-5d76-43fe-97e3-3b10f78102d4 user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276 subscribed=1 rejected=0
+2026/11/08 08:37:45 websocket client disconnected client_id=8828dd27-5d76-43fe-97e3-3b10f78102d4 user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+    contract_test.go:411: CT-RT-02 | Realtime  | participant subscribes to its own project's finance topic                          | expected=200 SUBSCRIBED | actual=200 SUBSCRIBED | pass=true
+=== RUN   TestAPIContractScenarios/CT-RT-03
+2026/11/08 08:37:45 websocket client connected client_id=73e9f69e-82cf-4c7c-9e0c-12348ef637fa user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+2026/11/08 08:37:45 websocket subscription updated client_id=73e9f69e-82cf-4c7c-9e0c-12348ef637fa user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276 subscribed=0 rejected=1
+2026/11/08 08:37:45 websocket client disconnected client_id=73e9f69e-82cf-4c7c-9e0c-12348ef637fa user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+    contract_test.go:411: CT-RT-03 | Realtime  | participant subscribes to another project's finance topic                          | expected=403 REJECTED | actual=403 REJECTED | pass=true
+=== RUN   TestAPIContractScenarios/CT-RT-04
+    contract_test.go:411: CT-RT-04 | Realtime  | disbursement commits a PaymentPaid outbox event with the status change             | expected=200 SUCCESS_DISBURSE | actual=200 SUCCESS_DISBURSE | pass=true
+=== RUN   TestAPIContractScenarios/CT-RT-05
+2026/11/08 08:37:45 websocket client connected client_id=01786a79-2207-4de6-81d2-e4cfd721ce0a user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+2026/11/08 08:37:45 websocket subscription updated client_id=01786a79-2207-4de6-81d2-e4cfd721ce0a user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276 subscribed=1 rejected=0
+2026/11/08 08:37:45 processing outbox event id=089f596f-c895-4950-b012-c6d071e04776 type=ProgressSubmitted aggregate=progress_log:58d0ec12-e7c1-45dd-aaff-540aa434f581
+2026/11/08 08:37:45 published realtime event outbox_id=089f596f-c895-4950-b012-c6d071e04776 type=progress.submitted topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.monitoring
+2026/11/08 08:37:45 processing outbox event id=dfdc5b05-07ea-4ccf-806e-7377debbd643 type=ProgressValidated aggregate=progress_log:58d0ec12-e7c1-45dd-aaff-540aa434f581
+2026/11/08 08:37:45 published realtime event outbox_id=dfdc5b05-07ea-4ccf-806e-7377debbd643 type=progress.validated topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.monitoring
+2026/11/08 08:37:45 processing outbox event id=c1b11276-8d9e-4ab9-96b1-fbc1a7282bf0 type=PaymentPaid aggregate=payment_request:ec385bcc-b434-4b5d-8851-6e13d044f658
+2026/11/08 08:37:45 published realtime event outbox_id=c1b11276-8d9e-4ab9-96b1-fbc1a7282bf0 type=payment.paid topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.finance
+2026/11/08 08:37:45 published realtime event outbox_id=c1b11276-8d9e-4ab9-96b1-fbc1a7282bf0 type=payment.paid topic=payment.ec385bcc-b434-4b5d-8851-6e13d044f658
+2026/11/08 08:37:45 processing outbox event id=dc132bc8-6e55-47bf-b8ef-a7a391a88ed1 type=TicketCreated aggregate=ticket:0e9558cc-0e95-478a-b2d7-a85497e4e444
+2026/11/08 08:37:45 published realtime event outbox_id=dc132bc8-6e55-47bf-b8ef-a7a391a88ed1 type=ticket.created topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.ticket
+2026/11/08 08:37:45 published realtime event outbox_id=dc132bc8-6e55-47bf-b8ef-a7a391a88ed1 type=ticket.created topic=ticket.0e9558cc-0e95-478a-b2d7-a85497e4e444
+2026/11/08 08:37:45 processing outbox event id=72bf1a76-e77c-47d9-9be0-7fcfd8752168 type=TicketAssigned aggregate=ticket:0e9558cc-0e95-478a-b2d7-a85497e4e444
+2026/11/08 08:37:45 published realtime event outbox_id=72bf1a76-e77c-47d9-9be0-7fcfd8752168 type=ticket.assigned topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.ticket
+2026/11/08 08:37:45 published realtime event outbox_id=72bf1a76-e77c-47d9-9be0-7fcfd8752168 type=ticket.assigned topic=ticket.0e9558cc-0e95-478a-b2d7-a85497e4e444
+2026/11/08 08:37:45 processing outbox event id=6f6242a3-b6c3-4fd4-884d-dce5a6336f45 type=TicketResolved aggregate=ticket:0e9558cc-0e95-478a-b2d7-a85497e4e444
+2026/11/08 08:37:45 published realtime event outbox_id=6f6242a3-b6c3-4fd4-884d-dce5a6336f45 type=ticket.resolved topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.ticket
+2026/11/08 08:37:45 published realtime event outbox_id=6f6242a3-b6c3-4fd4-884d-dce5a6336f45 type=ticket.resolved topic=ticket.0e9558cc-0e95-478a-b2d7-a85497e4e444
+2026/11/08 08:37:45 processing outbox event id=b531f088-dc04-49c4-9aea-e07d09def35a type=TicketClosed aggregate=ticket:0e9558cc-0e95-478a-b2d7-a85497e4e444
+2026/11/08 08:37:45 published realtime event outbox_id=b531f088-dc04-49c4-9aea-e07d09def35a type=ticket.closed topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.ticket
+2026/11/08 08:37:45 published realtime event outbox_id=b531f088-dc04-49c4-9aea-e07d09def35a type=ticket.closed topic=ticket.0e9558cc-0e95-478a-b2d7-a85497e4e444
+2026/11/08 08:37:45 processing outbox event id=dea86d64-1906-4271-9f0d-7107ca796608 type=PaymentPaid aggregate=payment_request:06662ebe-0efc-4b14-9c44-9646c85ccc5a
+2026/11/08 08:37:45 published realtime event outbox_id=dea86d64-1906-4271-9f0d-7107ca796608 type=payment.paid topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.finance
+2026/11/08 08:37:45 published realtime event outbox_id=dea86d64-1906-4271-9f0d-7107ca796608 type=payment.paid topic=payment.06662ebe-0efc-4b14-9c44-9646c85ccc5a
+2026/11/08 08:37:45 processing outbox event id=5d24f35e-c16c-4f52-b70b-826dde0f554e type=PaymentPaid aggregate=payment_request:df3eab54-8476-49a0-b5c8-2ec8193fa512
+2026/11/08 08:37:45 published realtime event outbox_id=5d24f35e-c16c-4f52-b70b-826dde0f554e type=payment.paid topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.finance
+2026/11/08 08:37:45 published realtime event outbox_id=5d24f35e-c16c-4f52-b70b-826dde0f554e type=payment.paid topic=payment.df3eab54-8476-49a0-b5c8-2ec8193fa512
+2026/11/08 08:37:45 websocket client disconnected client_id=01786a79-2207-4de6-81d2-e4cfd721ce0a user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+    contract_test.go:411: CT-RT-05 | Realtime  | worker delivers the committed event to the subscribed client                       | expected=200 payment.paid | actual=200 payment.paid | pass=true
+=== RUN   TestAPIContractScenarios/CT-RT-06
+    contract_test.go:411: CT-RT-06 | Realtime  | delivered envelope is a refetch trigger, not a data copy                           | expected=200 SUCCESS_GET_PAYMENT_REQUEST | actual=200 SUCCESS_GET_PAYMENT_REQUEST | pass=true
+2026/11/08 08:37:45 websocket redis fanout subscriber stopped channel=contract_2d4f4e87:ws:events
+2026/11/08 08:37:45 websocket service shutdown completed
+--- PASS: TestAPIContractScenarios (0.12s)
+    --- PASS: TestAPIContractScenarios/CT-FSM-01 (0.01s)
+    --- PASS: TestAPIContractScenarios/CT-FSM-02 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-FSM-03 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-FSM-04 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-FSM-05 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-FSM-06 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-POL-01 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-POL-02 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-POL-03 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-POL-04 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-POL-05 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-POL-06 (0.01s)
+    --- PASS: TestAPIContractScenarios/CT-SLA-01 (0.01s)
+    --- PASS: TestAPIContractScenarios/CT-SLA-02 (0.01s)
+    --- PASS: TestAPIContractScenarios/CT-SLA-03 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-AUD-01 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-AUD-02 (0.01s)
+    --- PASS: TestAPIContractScenarios/CT-AUD-03 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-RT-01 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-RT-02 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-RT-03 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-RT-04 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-RT-05 (0.01s)
+    --- PASS: TestAPIContractScenarios/CT-RT-06 (0.00s)
+=== RUN   TestOutboxDeliveryGuarantees
+=== RUN   TestOutboxDeliveryGuarantees/OUTBOX-01_rollback_discards_both_the_business_change_and_the_event
+=== RUN   TestOutboxDeliveryGuarantees/OUTBOX-02_commit_persists_the_business_change_and_a_PENDING_event_together
+=== RUN   TestOutboxDeliveryGuarantees/OUTBOX-03_concurrent_workers_claim_an_event_exactly_once
+=== RUN   TestOutboxDeliveryGuarantees/OUTBOX-04_worker_publishes_a_committed_event_once_and_marks_it_PROCESSED
+2026/11/08 08:37:45 processing outbox event id=6a4a879f-1c84-46c0-9992-bc1b3ca7e8b1 type=PaymentPaid aggregate=payment_request:25df94bc-2d26-4c60-8da5-de867fb50721
+2026/11/08 08:37:45 published realtime event outbox_id=6a4a879f-1c84-46c0-9992-bc1b3ca7e8b1 type=payment.paid topic=project.d6a36c06-ab93-4177-a7c6-fd23b6afad1f.finance
+2026/11/08 08:37:45 published realtime event outbox_id=6a4a879f-1c84-46c0-9992-bc1b3ca7e8b1 type=payment.paid topic=payment.25df94bc-2d26-4c60-8da5-de867fb50721
+2026/11/08 08:37:45 processing outbox event id=b1109be3-289c-4196-8aa3-4a5e5cf54dbd type=PaymentPaid aggregate=payment_request:8ef943f0-4e03-42d7-96be-3abd78838a5c
+2026/11/08 08:37:45 published realtime event outbox_id=b1109be3-289c-4196-8aa3-4a5e5cf54dbd type=payment.paid topic=project.d6a36c06-ab93-4177-a7c6-fd23b6afad1f.finance
+2026/11/08 08:37:45 published realtime event outbox_id=b1109be3-289c-4196-8aa3-4a5e5cf54dbd type=payment.paid topic=payment.8ef943f0-4e03-42d7-96be-3abd78838a5c
+=== RUN   TestOutboxDeliveryGuarantees/OUTBOX-05_publish_failure_marks_the_event_FAILED_and_it_is_not_retried
+2026/11/08 08:37:45 processing outbox event id=e4761c7b-c16d-4758-a1c6-8d04240f3a61 type=PaymentPaid aggregate=payment_request:ce3cbbc9-0457-4529-afbf-b53f9d489cbb
+2026/11/08 08:37:45 published realtime event outbox_id=e4761c7b-c16d-4758-a1c6-8d04240f3a61 type=payment.paid topic=project.d6a36c06-ab93-4177-a7c6-fd23b6afad1f.finance
+=== RUN   TestOutboxDeliveryGuarantees/OUTBOX-06_event_claimed_by_a_crashed_worker_stays_PROCESSING
+--- PASS: TestOutboxDeliveryGuarantees (0.04s)
+    --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-01_rollback_discards_both_the_business_change_and_the_event (0.00s)
+    --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-02_commit_persists_the_business_change_and_a_PENDING_event_together (0.00s)
+    --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-03_concurrent_workers_claim_an_event_exactly_once (0.01s)
+    --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-04_worker_publishes_a_committed_event_once_and_marks_it_PROCESSED (0.00s)
+    --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-05_publish_failure_marks_the_event_FAILED_and_it_is_not_retried (0.00s)
+    --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-06_event_claimed_by_a_crashed_worker_stays_PROCESSING (0.00s)
+=== RUN   TestWorkflowStateActionActorMatrix
+=== RUN   TestWorkflowStateActionActorMatrix/finance
+    workflow_matrix_test.go:171: MATRIX finance    states=6 actions=5 actors=6 cells=180 ok=5 rejected_fsm_400=25 rejected_policy_403=150
+=== RUN   TestWorkflowStateActionActorMatrix/tracker
+    workflow_matrix_test.go:220: MATRIX tracker    states=5 actions=5 actors=6 cells=150 ok=18 rejected_fsm_400=22 rejected_policy_403=110
+=== RUN   TestWorkflowStateActionActorMatrix/monitoring
+    workflow_matrix_test.go:251: MATRIX monitoring states=2 actions=2 actors=6 cells=24 ok=2 rejected_fsm_400=2 rejected_policy_403=20
+=== NAME  TestWorkflowStateActionActorMatrix
+    workflow_matrix_test.go:260: MATRIX total cells=354 ok=25 rejected_fsm_400=49 rejected_policy_403=280
+--- PASS: TestWorkflowStateActionActorMatrix (0.28s)
+    --- PASS: TestWorkflowStateActionActorMatrix/finance (0.10s)
+    --- PASS: TestWorkflowStateActionActorMatrix/tracker (0.16s)
+    --- PASS: TestWorkflowStateActionActorMatrix/monitoring (0.02s)
+PASS
+ok  	investment_monitoring/internal/integration	1.060s

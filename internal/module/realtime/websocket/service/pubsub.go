@@ -14,6 +14,7 @@ type redisPubSub struct {
 	client  *redis.Client
 	channel string
 	cancel  context.CancelFunc
+	sub     *redis.PubSub
 	wg      sync.WaitGroup
 }
 
@@ -50,6 +51,7 @@ func (r *redisPubSub) start(ctx context.Context, deliver func(Envelope)) {
 	subCtx, cancel := context.WithCancel(ctx)
 	r.cancel = cancel
 	pubsub := r.client.Subscribe(subCtx, r.channel)
+	r.sub = pubsub
 
 	r.wg.Add(1)
 	go func() {
@@ -87,6 +89,11 @@ func (r *redisPubSub) shutdown() {
 	}
 	if r.cancel != nil {
 		r.cancel()
+	}
+	// A blocked ReceiveMessage does not observe context cancellation, so the
+	// subscription must be closed to let the receive loop return.
+	if r.sub != nil {
+		_ = r.sub.Close()
 	}
 	r.wg.Wait()
 	log.Printf("websocket redis fanout subscriber stopped channel=%s", r.channel)
