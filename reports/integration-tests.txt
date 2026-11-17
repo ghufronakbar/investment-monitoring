@@ -1,13 +1,13 @@
-2026/11/08 08:37:43 OK   20260114083618_init_database.sql (74.54ms)
-2026/11/08 08:37:43 OK   20260114110651_init_seeder.sql (3.79ms)
-2026/11/08 08:37:43 OK   20260627090000_add_sla_records.sql (5.41ms)
-2026/11/08 08:37:43 OK   20260627093000_add_audit_logs.sql (6.29ms)
-2026/11/08 08:37:43 OK   20260627094500_add_outbox_events.sql (3.59ms)
-2026/11/08 08:37:43 OK   20260627100000_add_file_metadata.sql (4.76ms)
-2026/11/08 08:37:43 OK   20261108090000_audit_logs_integrity.sql (4.55ms)
-2026/11/08 08:37:43 OK   20261108100000_outbox_notify.sql (670.71µs)
-2026/11/08 08:37:43 OK   20261108110000_drop_examples.sql (1.52ms)
-2026/11/08 08:37:43 goose: successfully migrated database to version: 20261108110000
+2026/11/17 20:41:31 OK   20260114083618_init_database.sql (36.9ms)
+2026/11/17 20:41:31 OK   20260114110651_init_seeder.sql (2.31ms)
+2026/11/17 20:41:31 OK   20260627090000_add_sla_records.sql (2.98ms)
+2026/11/17 20:41:31 OK   20260627093000_add_audit_logs.sql (4.5ms)
+2026/11/17 20:41:31 OK   20260627094500_add_outbox_events.sql (3.39ms)
+2026/11/17 20:41:31 OK   20260627100000_add_file_metadata.sql (3.91ms)
+2026/11/17 20:41:31 OK   20261108090000_audit_logs_integrity.sql (3.96ms)
+2026/11/17 20:41:31 OK   20261108100000_outbox_notify.sql (546.54µs)
+2026/11/17 20:41:31 OK   20261108110000_drop_examples.sql (959.46µs)
+2026/11/17 20:41:31 goose: successfully migrated database to version: 20261108110000
 === RUN   TestAuditLogIntegrity
 === RUN   TestAuditLogIntegrity/AUDIT-01_every_inserted_row_is_hashed_and_linked_to_its_predecessor
 === RUN   TestAuditLogIntegrity/AUDIT-02_UPDATE,_DELETE_and_TRUNCATE_are_rejected
@@ -15,12 +15,12 @@
 === RUN   TestAuditLogIntegrity/AUDIT-04_tampering_that_bypasses_the_triggers_is_detected
     audit_test.go:131: AUDIT-04 detected tampering at seq=5: row content does not match row_hash
 === RUN   TestAuditLogIntegrity/AUDIT-05_concurrent_inserts_keep_a_single_unforked_chain
---- PASS: TestAuditLogIntegrity (0.21s)
-    --- PASS: TestAuditLogIntegrity/AUDIT-01_every_inserted_row_is_hashed_and_linked_to_its_predecessor (0.02s)
-    --- PASS: TestAuditLogIntegrity/AUDIT-02_UPDATE,_DELETE_and_TRUNCATE_are_rejected (0.01s)
+--- PASS: TestAuditLogIntegrity (0.11s)
+    --- PASS: TestAuditLogIntegrity/AUDIT-01_every_inserted_row_is_hashed_and_linked_to_its_predecessor (0.01s)
+    --- PASS: TestAuditLogIntegrity/AUDIT-02_UPDATE,_DELETE_and_TRUNCATE_are_rejected (0.00s)
     --- PASS: TestAuditLogIntegrity/AUDIT-03_deleting_an_actor_referenced_by_the_trail_is_rejected (0.00s)
     --- PASS: TestAuditLogIntegrity/AUDIT-04_tampering_that_bypasses_the_triggers_is_detected (0.01s)
-    --- PASS: TestAuditLogIntegrity/AUDIT-05_concurrent_inserts_keep_a_single_unforked_chain (0.11s)
+    --- PASS: TestAuditLogIntegrity/AUDIT-05_concurrent_inserts_keep_a_single_unforked_chain (0.08s)
 === RUN   TestOrganizationCentricAuthorizationVersusRBAC
 === RUN   TestOrganizationCentricAuthorizationVersusRBAC/AUTH-01
     authorization_test.go:196: AUTH-01 | contractor submits progress on its own project                                        | policy=200 | rbac_baseline_allows=true | differs=false
@@ -68,7 +68,7 @@
     authorization_test.go:196: AUTH-22 | government supervisor outside the contract views the project (supervisory fallback)   | policy=200 | rbac_baseline_allows=true | differs=false
 === NAME  TestOrganizationCentricAuthorizationVersusRBAC
     authorization_test.go:200: AUTH summary: cases=22 differ_from_rbac_baseline=12
---- PASS: TestOrganizationCentricAuthorizationVersusRBAC (0.13s)
+--- PASS: TestOrganizationCentricAuthorizationVersusRBAC (0.04s)
     --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-01 (0.00s)
     --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-02 (0.00s)
     --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-03 (0.00s)
@@ -92,7 +92,7 @@
     --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-21 (0.00s)
     --- PASS: TestOrganizationCentricAuthorizationVersusRBAC/AUTH-22 (0.00s)
 === RUN   TestAPIContractScenarios
-2026/11/08 08:37:45 websocket redis fanout subscriber started channel=contract_2d4f4e87:ws:events
+2026/11/17 20:41:33 websocket redis fanout subscriber started channel=contract_7d642b60:ws:events
 === RUN   TestAPIContractScenarios/CT-FSM-01
     contract_test.go:411: CT-FSM-01 | FSM       | contractor submits a progress report                                               | expected=200 SUCCESS_SUBMIT_PROGRESS | actual=200 SUCCESS_SUBMIT_PROGRESS | pass=true
 === RUN   TestAPIContractScenarios/CT-FSM-02
@@ -142,52 +142,52 @@ NOT_ASSIGNED_TO_YOUR_ORG
 INVALID_OR_EXPIRED_TOKEN
     contract_test.go:411: CT-RT-01 | Realtime  | WebSocket handshake without an access token                                        | expected=401  | actual=401  | pass=true
 === RUN   TestAPIContractScenarios/CT-RT-02
-2026/11/08 08:37:45 websocket client connected client_id=8828dd27-5d76-43fe-97e3-3b10f78102d4 user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
-2026/11/08 08:37:45 websocket subscription updated client_id=8828dd27-5d76-43fe-97e3-3b10f78102d4 user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276 subscribed=1 rejected=0
-2026/11/08 08:37:45 websocket client disconnected client_id=8828dd27-5d76-43fe-97e3-3b10f78102d4 user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+2026/11/17 20:41:33 websocket client connected client_id=ffb9912e-5bea-4604-80a9-c83993c1b44e user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027
+2026/11/17 20:41:33 websocket subscription updated client_id=ffb9912e-5bea-4604-80a9-c83993c1b44e user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027 subscribed=1 rejected=0
+2026/11/17 20:41:33 websocket client disconnected client_id=ffb9912e-5bea-4604-80a9-c83993c1b44e user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027
     contract_test.go:411: CT-RT-02 | Realtime  | participant subscribes to its own project's finance topic                          | expected=200 SUBSCRIBED | actual=200 SUBSCRIBED | pass=true
 === RUN   TestAPIContractScenarios/CT-RT-03
-2026/11/08 08:37:45 websocket client connected client_id=73e9f69e-82cf-4c7c-9e0c-12348ef637fa user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
-2026/11/08 08:37:45 websocket subscription updated client_id=73e9f69e-82cf-4c7c-9e0c-12348ef637fa user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276 subscribed=0 rejected=1
-2026/11/08 08:37:45 websocket client disconnected client_id=73e9f69e-82cf-4c7c-9e0c-12348ef637fa user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+2026/11/17 20:41:33 websocket client connected client_id=ea72d496-8fbe-4014-9b64-9280989e62b5 user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027
+2026/11/17 20:41:33 websocket subscription updated client_id=ea72d496-8fbe-4014-9b64-9280989e62b5 user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027 subscribed=0 rejected=1
+2026/11/17 20:41:33 websocket client disconnected client_id=ea72d496-8fbe-4014-9b64-9280989e62b5 user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027
     contract_test.go:411: CT-RT-03 | Realtime  | participant subscribes to another project's finance topic                          | expected=403 REJECTED | actual=403 REJECTED | pass=true
 === RUN   TestAPIContractScenarios/CT-RT-04
     contract_test.go:411: CT-RT-04 | Realtime  | disbursement commits a PaymentPaid outbox event with the status change             | expected=200 SUCCESS_DISBURSE | actual=200 SUCCESS_DISBURSE | pass=true
 === RUN   TestAPIContractScenarios/CT-RT-05
-2026/11/08 08:37:45 websocket client connected client_id=01786a79-2207-4de6-81d2-e4cfd721ce0a user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
-2026/11/08 08:37:45 websocket subscription updated client_id=01786a79-2207-4de6-81d2-e4cfd721ce0a user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276 subscribed=1 rejected=0
-2026/11/08 08:37:45 processing outbox event id=089f596f-c895-4950-b012-c6d071e04776 type=ProgressSubmitted aggregate=progress_log:58d0ec12-e7c1-45dd-aaff-540aa434f581
-2026/11/08 08:37:45 published realtime event outbox_id=089f596f-c895-4950-b012-c6d071e04776 type=progress.submitted topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.monitoring
-2026/11/08 08:37:45 processing outbox event id=dfdc5b05-07ea-4ccf-806e-7377debbd643 type=ProgressValidated aggregate=progress_log:58d0ec12-e7c1-45dd-aaff-540aa434f581
-2026/11/08 08:37:45 published realtime event outbox_id=dfdc5b05-07ea-4ccf-806e-7377debbd643 type=progress.validated topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.monitoring
-2026/11/08 08:37:45 processing outbox event id=c1b11276-8d9e-4ab9-96b1-fbc1a7282bf0 type=PaymentPaid aggregate=payment_request:ec385bcc-b434-4b5d-8851-6e13d044f658
-2026/11/08 08:37:45 published realtime event outbox_id=c1b11276-8d9e-4ab9-96b1-fbc1a7282bf0 type=payment.paid topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.finance
-2026/11/08 08:37:45 published realtime event outbox_id=c1b11276-8d9e-4ab9-96b1-fbc1a7282bf0 type=payment.paid topic=payment.ec385bcc-b434-4b5d-8851-6e13d044f658
-2026/11/08 08:37:45 processing outbox event id=dc132bc8-6e55-47bf-b8ef-a7a391a88ed1 type=TicketCreated aggregate=ticket:0e9558cc-0e95-478a-b2d7-a85497e4e444
-2026/11/08 08:37:45 published realtime event outbox_id=dc132bc8-6e55-47bf-b8ef-a7a391a88ed1 type=ticket.created topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.ticket
-2026/11/08 08:37:45 published realtime event outbox_id=dc132bc8-6e55-47bf-b8ef-a7a391a88ed1 type=ticket.created topic=ticket.0e9558cc-0e95-478a-b2d7-a85497e4e444
-2026/11/08 08:37:45 processing outbox event id=72bf1a76-e77c-47d9-9be0-7fcfd8752168 type=TicketAssigned aggregate=ticket:0e9558cc-0e95-478a-b2d7-a85497e4e444
-2026/11/08 08:37:45 published realtime event outbox_id=72bf1a76-e77c-47d9-9be0-7fcfd8752168 type=ticket.assigned topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.ticket
-2026/11/08 08:37:45 published realtime event outbox_id=72bf1a76-e77c-47d9-9be0-7fcfd8752168 type=ticket.assigned topic=ticket.0e9558cc-0e95-478a-b2d7-a85497e4e444
-2026/11/08 08:37:45 processing outbox event id=6f6242a3-b6c3-4fd4-884d-dce5a6336f45 type=TicketResolved aggregate=ticket:0e9558cc-0e95-478a-b2d7-a85497e4e444
-2026/11/08 08:37:45 published realtime event outbox_id=6f6242a3-b6c3-4fd4-884d-dce5a6336f45 type=ticket.resolved topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.ticket
-2026/11/08 08:37:45 published realtime event outbox_id=6f6242a3-b6c3-4fd4-884d-dce5a6336f45 type=ticket.resolved topic=ticket.0e9558cc-0e95-478a-b2d7-a85497e4e444
-2026/11/08 08:37:45 processing outbox event id=b531f088-dc04-49c4-9aea-e07d09def35a type=TicketClosed aggregate=ticket:0e9558cc-0e95-478a-b2d7-a85497e4e444
-2026/11/08 08:37:45 published realtime event outbox_id=b531f088-dc04-49c4-9aea-e07d09def35a type=ticket.closed topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.ticket
-2026/11/08 08:37:45 published realtime event outbox_id=b531f088-dc04-49c4-9aea-e07d09def35a type=ticket.closed topic=ticket.0e9558cc-0e95-478a-b2d7-a85497e4e444
-2026/11/08 08:37:45 processing outbox event id=dea86d64-1906-4271-9f0d-7107ca796608 type=PaymentPaid aggregate=payment_request:06662ebe-0efc-4b14-9c44-9646c85ccc5a
-2026/11/08 08:37:45 published realtime event outbox_id=dea86d64-1906-4271-9f0d-7107ca796608 type=payment.paid topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.finance
-2026/11/08 08:37:45 published realtime event outbox_id=dea86d64-1906-4271-9f0d-7107ca796608 type=payment.paid topic=payment.06662ebe-0efc-4b14-9c44-9646c85ccc5a
-2026/11/08 08:37:45 processing outbox event id=5d24f35e-c16c-4f52-b70b-826dde0f554e type=PaymentPaid aggregate=payment_request:df3eab54-8476-49a0-b5c8-2ec8193fa512
-2026/11/08 08:37:45 published realtime event outbox_id=5d24f35e-c16c-4f52-b70b-826dde0f554e type=payment.paid topic=project.3503206b-ecd0-449c-80ce-0fa62c58123d.finance
-2026/11/08 08:37:45 published realtime event outbox_id=5d24f35e-c16c-4f52-b70b-826dde0f554e type=payment.paid topic=payment.df3eab54-8476-49a0-b5c8-2ec8193fa512
-2026/11/08 08:37:45 websocket client disconnected client_id=01786a79-2207-4de6-81d2-e4cfd721ce0a user_id=b99ebbcc-3407-465f-85ce-8e4a9d246276
+2026/11/17 20:41:33 websocket client connected client_id=a9ef1728-5cad-45a0-b765-97dbe4b8574b user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027
+2026/11/17 20:41:33 websocket subscription updated client_id=a9ef1728-5cad-45a0-b765-97dbe4b8574b user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027 subscribed=1 rejected=0
+2026/11/17 20:41:33 processing outbox event id=2669115a-6764-41c8-995e-7558aaee58f0 type=ProgressSubmitted aggregate=progress_log:5649e059-d9d8-427f-8240-5cda190a81b0
+2026/11/17 20:41:33 published realtime event outbox_id=2669115a-6764-41c8-995e-7558aaee58f0 type=progress.submitted topic=project.aafca639-d700-44e3-992f-a7348e74af61.monitoring
+2026/11/17 20:41:33 processing outbox event id=42bb653d-cc82-4358-8bc4-586c37e2536f type=ProgressValidated aggregate=progress_log:5649e059-d9d8-427f-8240-5cda190a81b0
+2026/11/17 20:41:33 published realtime event outbox_id=42bb653d-cc82-4358-8bc4-586c37e2536f type=progress.validated topic=project.aafca639-d700-44e3-992f-a7348e74af61.monitoring
+2026/11/17 20:41:33 processing outbox event id=2b2ed448-5d7c-4e6b-9b0d-098f1f080283 type=PaymentPaid aggregate=payment_request:4d00b666-8960-475d-aef3-8fb6238495c4
+2026/11/17 20:41:33 published realtime event outbox_id=2b2ed448-5d7c-4e6b-9b0d-098f1f080283 type=payment.paid topic=project.aafca639-d700-44e3-992f-a7348e74af61.finance
+2026/11/17 20:41:33 published realtime event outbox_id=2b2ed448-5d7c-4e6b-9b0d-098f1f080283 type=payment.paid topic=payment.4d00b666-8960-475d-aef3-8fb6238495c4
+2026/11/17 20:41:33 processing outbox event id=ff6230e3-9b49-451a-9193-1b910c1c67aa type=TicketCreated aggregate=ticket:0e7f1ad5-5438-40b9-9aad-2c7d72df2d3f
+2026/11/17 20:41:33 published realtime event outbox_id=ff6230e3-9b49-451a-9193-1b910c1c67aa type=ticket.created topic=project.aafca639-d700-44e3-992f-a7348e74af61.ticket
+2026/11/17 20:41:33 published realtime event outbox_id=ff6230e3-9b49-451a-9193-1b910c1c67aa type=ticket.created topic=ticket.0e7f1ad5-5438-40b9-9aad-2c7d72df2d3f
+2026/11/17 20:41:33 processing outbox event id=84cf3e2e-4551-4b2f-9610-dbe9d3114fdc type=TicketAssigned aggregate=ticket:0e7f1ad5-5438-40b9-9aad-2c7d72df2d3f
+2026/11/17 20:41:33 published realtime event outbox_id=84cf3e2e-4551-4b2f-9610-dbe9d3114fdc type=ticket.assigned topic=project.aafca639-d700-44e3-992f-a7348e74af61.ticket
+2026/11/17 20:41:33 published realtime event outbox_id=84cf3e2e-4551-4b2f-9610-dbe9d3114fdc type=ticket.assigned topic=ticket.0e7f1ad5-5438-40b9-9aad-2c7d72df2d3f
+2026/11/17 20:41:33 processing outbox event id=b4676238-99c7-4e46-b6aa-35be305fb776 type=TicketResolved aggregate=ticket:0e7f1ad5-5438-40b9-9aad-2c7d72df2d3f
+2026/11/17 20:41:33 published realtime event outbox_id=b4676238-99c7-4e46-b6aa-35be305fb776 type=ticket.resolved topic=project.aafca639-d700-44e3-992f-a7348e74af61.ticket
+2026/11/17 20:41:33 published realtime event outbox_id=b4676238-99c7-4e46-b6aa-35be305fb776 type=ticket.resolved topic=ticket.0e7f1ad5-5438-40b9-9aad-2c7d72df2d3f
+2026/11/17 20:41:33 processing outbox event id=ca8bb67c-3177-46f0-be65-a9bee8271700 type=TicketClosed aggregate=ticket:0e7f1ad5-5438-40b9-9aad-2c7d72df2d3f
+2026/11/17 20:41:33 published realtime event outbox_id=ca8bb67c-3177-46f0-be65-a9bee8271700 type=ticket.closed topic=project.aafca639-d700-44e3-992f-a7348e74af61.ticket
+2026/11/17 20:41:33 published realtime event outbox_id=ca8bb67c-3177-46f0-be65-a9bee8271700 type=ticket.closed topic=ticket.0e7f1ad5-5438-40b9-9aad-2c7d72df2d3f
+2026/11/17 20:41:33 processing outbox event id=2be79ead-41d7-4211-8401-44046a7f5dcd type=PaymentPaid aggregate=payment_request:ea205402-c0be-4e43-968c-0299935d7879
+2026/11/17 20:41:33 published realtime event outbox_id=2be79ead-41d7-4211-8401-44046a7f5dcd type=payment.paid topic=project.aafca639-d700-44e3-992f-a7348e74af61.finance
+2026/11/17 20:41:33 published realtime event outbox_id=2be79ead-41d7-4211-8401-44046a7f5dcd type=payment.paid topic=payment.ea205402-c0be-4e43-968c-0299935d7879
+2026/11/17 20:41:33 processing outbox event id=4303d152-fe61-46e7-bc32-75dc1b8b9476 type=PaymentPaid aggregate=payment_request:a603b4c6-7d1a-40e9-a31a-6b9fd42dad17
+2026/11/17 20:41:33 published realtime event outbox_id=4303d152-fe61-46e7-bc32-75dc1b8b9476 type=payment.paid topic=project.aafca639-d700-44e3-992f-a7348e74af61.finance
+2026/11/17 20:41:33 published realtime event outbox_id=4303d152-fe61-46e7-bc32-75dc1b8b9476 type=payment.paid topic=payment.a603b4c6-7d1a-40e9-a31a-6b9fd42dad17
+2026/11/17 20:41:33 websocket client disconnected client_id=a9ef1728-5cad-45a0-b765-97dbe4b8574b user_id=8a6a67d4-fee0-4106-b6c8-4dab53cd0027
     contract_test.go:411: CT-RT-05 | Realtime  | worker delivers the committed event to the subscribed client                       | expected=200 payment.paid | actual=200 payment.paid | pass=true
 === RUN   TestAPIContractScenarios/CT-RT-06
     contract_test.go:411: CT-RT-06 | Realtime  | delivered envelope is a refetch trigger, not a data copy                           | expected=200 SUCCESS_GET_PAYMENT_REQUEST | actual=200 SUCCESS_GET_PAYMENT_REQUEST | pass=true
-2026/11/08 08:37:45 websocket redis fanout subscriber stopped channel=contract_2d4f4e87:ws:events
-2026/11/08 08:37:45 websocket service shutdown completed
---- PASS: TestAPIContractScenarios (0.12s)
+2026/11/17 20:41:33 websocket redis fanout subscriber stopped channel=contract_7d642b60:ws:events
+2026/11/17 20:41:33 websocket service shutdown completed
+--- PASS: TestAPIContractScenarios (0.07s)
     --- PASS: TestAPIContractScenarios/CT-FSM-01 (0.01s)
     --- PASS: TestAPIContractScenarios/CT-FSM-02 (0.00s)
     --- PASS: TestAPIContractScenarios/CT-FSM-03 (0.00s)
@@ -199,12 +199,12 @@ INVALID_OR_EXPIRED_TOKEN
     --- PASS: TestAPIContractScenarios/CT-POL-03 (0.00s)
     --- PASS: TestAPIContractScenarios/CT-POL-04 (0.00s)
     --- PASS: TestAPIContractScenarios/CT-POL-05 (0.00s)
-    --- PASS: TestAPIContractScenarios/CT-POL-06 (0.01s)
-    --- PASS: TestAPIContractScenarios/CT-SLA-01 (0.01s)
-    --- PASS: TestAPIContractScenarios/CT-SLA-02 (0.01s)
+    --- PASS: TestAPIContractScenarios/CT-POL-06 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-SLA-01 (0.00s)
+    --- PASS: TestAPIContractScenarios/CT-SLA-02 (0.00s)
     --- PASS: TestAPIContractScenarios/CT-SLA-03 (0.00s)
     --- PASS: TestAPIContractScenarios/CT-AUD-01 (0.00s)
-    --- PASS: TestAPIContractScenarios/CT-AUD-02 (0.01s)
+    --- PASS: TestAPIContractScenarios/CT-AUD-02 (0.00s)
     --- PASS: TestAPIContractScenarios/CT-AUD-03 (0.00s)
     --- PASS: TestAPIContractScenarios/CT-RT-01 (0.00s)
     --- PASS: TestAPIContractScenarios/CT-RT-02 (0.00s)
@@ -217,17 +217,17 @@ INVALID_OR_EXPIRED_TOKEN
 === RUN   TestOutboxDeliveryGuarantees/OUTBOX-02_commit_persists_the_business_change_and_a_PENDING_event_together
 === RUN   TestOutboxDeliveryGuarantees/OUTBOX-03_concurrent_workers_claim_an_event_exactly_once
 === RUN   TestOutboxDeliveryGuarantees/OUTBOX-04_worker_publishes_a_committed_event_once_and_marks_it_PROCESSED
-2026/11/08 08:37:45 processing outbox event id=6a4a879f-1c84-46c0-9992-bc1b3ca7e8b1 type=PaymentPaid aggregate=payment_request:25df94bc-2d26-4c60-8da5-de867fb50721
-2026/11/08 08:37:45 published realtime event outbox_id=6a4a879f-1c84-46c0-9992-bc1b3ca7e8b1 type=payment.paid topic=project.d6a36c06-ab93-4177-a7c6-fd23b6afad1f.finance
-2026/11/08 08:37:45 published realtime event outbox_id=6a4a879f-1c84-46c0-9992-bc1b3ca7e8b1 type=payment.paid topic=payment.25df94bc-2d26-4c60-8da5-de867fb50721
-2026/11/08 08:37:45 processing outbox event id=b1109be3-289c-4196-8aa3-4a5e5cf54dbd type=PaymentPaid aggregate=payment_request:8ef943f0-4e03-42d7-96be-3abd78838a5c
-2026/11/08 08:37:45 published realtime event outbox_id=b1109be3-289c-4196-8aa3-4a5e5cf54dbd type=payment.paid topic=project.d6a36c06-ab93-4177-a7c6-fd23b6afad1f.finance
-2026/11/08 08:37:45 published realtime event outbox_id=b1109be3-289c-4196-8aa3-4a5e5cf54dbd type=payment.paid topic=payment.8ef943f0-4e03-42d7-96be-3abd78838a5c
+2026/11/17 20:41:33 processing outbox event id=12c0e78a-e53b-452a-8627-5763a216d780 type=PaymentPaid aggregate=payment_request:923a5809-1c5a-4d7e-af5b-a9ade008222a
+2026/11/17 20:41:33 published realtime event outbox_id=12c0e78a-e53b-452a-8627-5763a216d780 type=payment.paid topic=project.00d65b54-a92b-45a4-8dac-ee01b3fef838.finance
+2026/11/17 20:41:33 published realtime event outbox_id=12c0e78a-e53b-452a-8627-5763a216d780 type=payment.paid topic=payment.923a5809-1c5a-4d7e-af5b-a9ade008222a
+2026/11/17 20:41:33 processing outbox event id=c2216925-8703-4c78-85d2-909d197b7d9a type=PaymentPaid aggregate=payment_request:ec2fd3e7-aea6-46ff-b3d5-2d33a190a137
+2026/11/17 20:41:33 published realtime event outbox_id=c2216925-8703-4c78-85d2-909d197b7d9a type=payment.paid topic=project.00d65b54-a92b-45a4-8dac-ee01b3fef838.finance
+2026/11/17 20:41:33 published realtime event outbox_id=c2216925-8703-4c78-85d2-909d197b7d9a type=payment.paid topic=payment.ec2fd3e7-aea6-46ff-b3d5-2d33a190a137
 === RUN   TestOutboxDeliveryGuarantees/OUTBOX-05_publish_failure_marks_the_event_FAILED_and_it_is_not_retried
-2026/11/08 08:37:45 processing outbox event id=e4761c7b-c16d-4758-a1c6-8d04240f3a61 type=PaymentPaid aggregate=payment_request:ce3cbbc9-0457-4529-afbf-b53f9d489cbb
-2026/11/08 08:37:45 published realtime event outbox_id=e4761c7b-c16d-4758-a1c6-8d04240f3a61 type=payment.paid topic=project.d6a36c06-ab93-4177-a7c6-fd23b6afad1f.finance
+2026/11/17 20:41:33 processing outbox event id=2a9bccd3-ce8a-40f0-bca3-51c6ab14e651 type=PaymentPaid aggregate=payment_request:6b9f1fab-24e1-4f43-aa52-f52dc90e3857
+2026/11/17 20:41:33 published realtime event outbox_id=2a9bccd3-ce8a-40f0-bca3-51c6ab14e651 type=payment.paid topic=project.00d65b54-a92b-45a4-8dac-ee01b3fef838.finance
 === RUN   TestOutboxDeliveryGuarantees/OUTBOX-06_event_claimed_by_a_crashed_worker_stays_PROCESSING
---- PASS: TestOutboxDeliveryGuarantees (0.04s)
+--- PASS: TestOutboxDeliveryGuarantees (0.03s)
     --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-01_rollback_discards_both_the_business_change_and_the_event (0.00s)
     --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-02_commit_persists_the_business_change_and_a_PENDING_event_together (0.00s)
     --- PASS: TestOutboxDeliveryGuarantees/OUTBOX-03_concurrent_workers_claim_an_event_exactly_once (0.01s)
@@ -240,12 +240,12 @@ INVALID_OR_EXPIRED_TOKEN
 === RUN   TestWorkflowStateActionActorMatrix/tracker
     workflow_matrix_test.go:220: MATRIX tracker    states=5 actions=5 actors=6 cells=150 ok=18 rejected_fsm_400=22 rejected_policy_403=110
 === RUN   TestWorkflowStateActionActorMatrix/monitoring
-    workflow_matrix_test.go:251: MATRIX monitoring states=2 actions=2 actors=6 cells=24 ok=2 rejected_fsm_400=2 rejected_policy_403=20
+    workflow_matrix_test.go:253: MATRIX monitoring states=3 actions=2 actors=6 cells=36 ok=2 rejected_fsm_400=4 rejected_policy_403=30
 === NAME  TestWorkflowStateActionActorMatrix
-    workflow_matrix_test.go:260: MATRIX total cells=354 ok=25 rejected_fsm_400=49 rejected_policy_403=280
+    workflow_matrix_test.go:265: MATRIX total cells=366 ok=25 rejected_fsm_400=51 rejected_policy_403=290
 --- PASS: TestWorkflowStateActionActorMatrix (0.28s)
     --- PASS: TestWorkflowStateActionActorMatrix/finance (0.10s)
-    --- PASS: TestWorkflowStateActionActorMatrix/tracker (0.16s)
-    --- PASS: TestWorkflowStateActionActorMatrix/monitoring (0.02s)
+    --- PASS: TestWorkflowStateActionActorMatrix/tracker (0.15s)
+    --- PASS: TestWorkflowStateActionActorMatrix/monitoring (0.03s)
 PASS
-ok  	investment_monitoring/internal/integration	1.060s
+ok  	investment_monitoring/internal/integration	0.791s

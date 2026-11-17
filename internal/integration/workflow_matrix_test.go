@@ -247,11 +247,16 @@ func TestWorkflowStateActionActorMatrix(t *testing.T) {
 			{"ACCEPT", auditor, set("PENDING_VALIDATION"), validate(10, nil)},
 			{"REJECT", auditor, set("PENDING_VALIDATION"), validate(5, &comment)},
 		}
-		states := []string{"PENDING_VALIDATION", "VALIDATED"}
+		// ACCEPTED and REJECTED are both stored as a progress_validations row
+		// (is_accepted true/false); each terminal state gets its own fixture.
+		states := []string{"PENDING_VALIDATION", "ACCEPTED", "REJECTED"}
 		add(runMatrix(t, "monitoring", states, actors, actions, func(state string) uuid.UUID {
 			id := f.ProgressLog(project.TaskID, actors["CONTRACTOR"].OrgID)
-			if state == "VALIDATED" {
-				insertValidation(t, db, id, actors["INDEPENDENT_AUDITOR"].OrgID)
+			switch state {
+			case "ACCEPTED":
+				insertValidation(t, db, id, actors["INDEPENDENT_AUDITOR"].OrgID, true)
+			case "REJECTED":
+				insertValidation(t, db, id, actors["INDEPENDENT_AUDITOR"].OrgID, false)
 			}
 			return id
 		}))
@@ -261,10 +266,14 @@ func TestWorkflowStateActionActorMatrix(t *testing.T) {
 		total.cells, total.ok, total.badRequest, total.forbidden)
 }
 
-func insertValidation(t *testing.T, db *sql.DB, logID, auditorOrgID uuid.UUID) {
+func insertValidation(t *testing.T, db *sql.DB, logID, auditorOrgID uuid.UUID, accepted bool) {
 	t.Helper()
-	if _, err := db.Exec(`INSERT INTO progress_validations (is_accepted, real_progress_percentage, progress_log_id, auditor_id) VALUES (true, 10, $1, $2)`,
-		logID, auditorOrgID); err != nil {
+	real := 10
+	if !accepted {
+		real = 5
+	}
+	if _, err := db.Exec(`INSERT INTO progress_validations (is_accepted, real_progress_percentage, progress_log_id, auditor_id) VALUES ($1, $2, $3, $4)`,
+		accepted, real, logID, auditorOrgID); err != nil {
 		t.Fatalf("insert validation: %v", err)
 	}
 }
